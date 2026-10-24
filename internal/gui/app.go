@@ -35,6 +35,7 @@ type App struct {
 	speech        string
 	mood          companion.RhythmMood
 	lastReadTs    int64
+	lastEventPoll time.Time
 	lastWellness  time.Time
 	idleThrottled bool
 	throttleSleep time.Duration
@@ -79,7 +80,8 @@ func NewApp(cfg Config) (*App, error) {
 		speech:        initialSpeech,
 		mood:          companion.MoodResting,
 		lastReadTs:    time.Now().Unix() - 60,
-		lastWellness:  time.Now(),
+		lastEventPoll: time.Time{}, // allow immediate first read
+		lastWellness:  time.Time{}, // allow immediate first check
 		idleThrottled: true,
 	}
 
@@ -133,7 +135,6 @@ func (a *App) cyclePetLocked() {
 // Update handles input, event polling, rhythm evaluation, and throttling.
 func (a *App) Update() error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 
 	a.ticks++
 
@@ -144,20 +145,27 @@ func (a *App) Update() error {
 
 	now := time.Now()
 
-	// Inter-process event polling: read newly arrived shell events
-	events, err := event.ReadEventsSince(a.cfg.EventPath, a.lastReadTs)
-	if err == nil && len(events) > 0 {
-		mood, _ := a.state.EvaluateRhythm(events, now)
-		a.mood = mood
-		a.speech = a.activePet.SpeechFor(string(mood))
-		for _, ev := range events {
-			if ev.Timestamp > a.lastReadTs {
-				a.lastReadTs = ev.Timestamp
+	// 1. Inter-process event polling: throttled to 1s to prevent 20Hz disk I/O
+	if now.Sub(a.lastEventPoll) >= 1*time.Second {
+		a.lastEventPoll = now
+		events, err := event.ReadEventsSince(a.cfg.EventPath, a.lastReadTs)
+		if err == nil && len(events) > 0 {
+			var maxTs int64 = a.lastReadTs
+			for _, ev := range events {
+				if ev.Timestamp > maxTs {
+					maxTs = ev.Timestamp
+				}
 			}
+			// Advance to max + 1 so seen events are not re-processed
+			a.lastReadTs = maxTs + 1
+
+			mood, _ := a.state.EvaluateRhythm(events, now)
+			a.mood = mood
+			a.speech = a.activePet.SpeechFor(string(mood))
 		}
 	}
 
-	// Wellness check: evaluate hydration, stretch, and eye rest intervals
+	// 2. Wellness check: evaluate hydration, stretch, and eye rest intervals
 	if now.Sub(a.lastWellness) >= 2*time.Second {
 		a.lastWellness = now
 		reminder := a.state.CheckWellness(now)
@@ -167,9 +175,15 @@ func (a *App) Update() error {
 		}
 	}
 
-	// Frame rate sleep throttling: keeps CPU <1.5% when idle
+	sleepDuration := time.Duration(0)
 	if a.idleThrottled && a.throttleSleep > 0 {
-		time.Sleep(a.throttleSleep)
+		sleepDuration = a.throttleSleep
+	}
+	a.mu.Unlock()
+
+	// 3. Frame rate sleep throttling outside mutex lock to avoid blocking readers
+	if sleepDuration > 0 {
+		time.Sleep(sleepDuration)
 	}
 
 	return nil

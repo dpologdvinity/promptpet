@@ -153,3 +153,59 @@ func TestAppUpdateRhythmAndWellness(t *testing.T) {
 		t.Errorf("expected non-empty speech after update")
 	}
 }
+
+func TestAppUpdateMultipleTicksNoEventReprocessingOrWellnessClobber(t *testing.T) {
+	tmp := t.TempDir()
+	eventFile := filepath.Join(tmp, "events.jsonl")
+	stateFile := filepath.Join(tmp, "state.json")
+	cfg := gui.Config{
+		StatePath: stateFile,
+		EventPath: eventFile,
+	}
+
+	// Setup state with overdue hydration reminder
+	s := companion.NewDefaultState()
+	s.LastWaterTime = time.Now().Add(-60 * time.Minute).Unix()
+	s.LastStretchTime = time.Now().Unix()
+	s.LastLookAwayTime = time.Now().Unix()
+	if err := companion.SaveState(stateFile, s); err != nil {
+		t.Fatalf("failed to save initial state: %v", err)
+	}
+
+	app, err := gui.NewApp(cfg)
+	if err != nil {
+		t.Fatalf("failed to create app: %v", err)
+	}
+
+	// Append a single initial event
+	evTs := time.Now().Unix()
+	err = event.AppendEventToFile(eventFile, event.Event{
+		Timestamp: evTs,
+		Type:      "command_finish",
+		ExitCode:  0,
+	})
+	if err != nil {
+		t.Fatalf("failed to append event: %v", err)
+	}
+
+	// Tick 1: processes the event and activates the overdue wellness reminder
+	if err := app.Update(); err != nil {
+		t.Fatalf("tick 1 update failed: %v", err)
+	}
+
+	expectedWellnessSpeech := app.ActivePet().SpeechFor(string(companion.WellnessWater))
+	if app.Speech() != expectedWellnessSpeech {
+		t.Fatalf("expected wellness speech %q on tick 1, got %q", expectedWellnessSpeech, app.Speech())
+	}
+
+	// Ticks 2 through 10: ensure active wellness speech is NOT clobbered
+	// and seen events are NOT re-evaluated on subsequent ticks
+	for tick := 2; tick <= 10; tick++ {
+		if err := app.Update(); err != nil {
+			t.Fatalf("tick %d update failed: %v", tick, err)
+		}
+		if app.Speech() != expectedWellnessSpeech {
+			t.Fatalf("wellness speech clobbered on tick %d: expected %q, got %q", tick, expectedWellnessSpeech, app.Speech())
+		}
+	}
+}
