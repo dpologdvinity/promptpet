@@ -43,6 +43,15 @@ eval "$(promptpet init bash)"
 promptpet init fish | source
 ```
 
+#### Shell Completions (Optional)
+To enable tab completion:
+
+```sh
+eval "$(promptpet completion bash)" # bash
+eval "$(promptpet completion zsh)"  # zsh
+promptpet completion fish > ~/.config/fish/completions/promptpet.fish # fish
+```
+
 Open a new shell session. Your pet will appear in your prompt.
 
 ### 3. Check Status
@@ -91,6 +100,7 @@ For technical deep dive, data flow, and package boundaries, see [ARCHITECTURE.md
 ```text
 promptpet                  show your pet's status card
 promptpet init <shell>     print the shell hook (zsh, bash, fish)
+promptpet completion <sh>  print shell autocompletions (zsh, bash, fish)
 promptpet pet              pet your pet
 promptpet play             play with your pet
 promptpet name <name>      rename your pet (1-20 chars: letters, digits, spaces, - _ ' .)

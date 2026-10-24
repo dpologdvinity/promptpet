@@ -11,6 +11,15 @@ var bash string
 //go:embed promptpet.fish
 var fish string
 
+//go:embed completion.zsh
+var completionZsh string
+
+//go:embed completion.bash
+var completionBash string
+
+//go:embed completion.fish
+var completionFish string
+
 func Script(shell string) (string, bool) {
 	switch shell {
 	case "zsh":
@@ -19,6 +28,18 @@ func Script(shell string) (string, bool) {
 		return bash, true
 	case "fish":
 		return fish, true
+	}
+	return "", false
+}
+
+func Completion(shell string) (string, bool) {
+	switch shell {
+	case "zsh":
+		return completionZsh, true
+	case "bash":
+		return completionBash, true
+	case "fish":
+		return completionFish, true
 	}
 	return "", false
 }

@@ -1,0 +1,12 @@
+complete -c promptpet -f
+complete -c promptpet -n "__fish_use_subcommand" -a init -d "print the shell hook"
+complete -c promptpet -n "__fish_use_subcommand" -a pet -d "pet your pet"
+complete -c promptpet -n "__fish_use_subcommand" -a play -d "play with your pet"
+complete -c promptpet -n "__fish_use_subcommand" -a name -d "rename your pet"
+complete -c promptpet -n "__fish_use_subcommand" -a species -d "change species"
+complete -c promptpet -n "__fish_use_subcommand" -a prompt -d "print prompt segment"
+complete -c promptpet -n "__fish_use_subcommand" -a completion -d "generate shell completions"
+complete -c promptpet -n "__fish_seen_subcommand_from init completion" -a "zsh bash fish"
+complete -c promptpet -n "__fish_seen_subcommand_from species" -a "cat dragon blob"
+complete -c promptpet -s h -l help -d "show help"
+complete -c promptpet -s V -l version -d "print version"

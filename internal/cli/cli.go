@@ -49,6 +49,7 @@ const usage = `promptpet - a tiny pet that lives in your shell prompt
 usage:
   promptpet                  show your pet
   promptpet init <shell>     print the shell hook (zsh, bash, fish)
+  promptpet completion <sh>  print shell completions (zsh, bash, fish)
   promptpet pet              pet your pet
   promptpet play             play with your pet
   promptpet name <name>      rename your pet
@@ -134,6 +135,16 @@ func Run(args []string, d Deps) int {
 		script, ok := hooks.Script(args[1])
 		if !ok {
 			return usageError(d, "init needs a shell: zsh, bash or fish")
+		}
+		fmt.Fprint(d.Stdout, script)
+		return 0
+	case "completion":
+		if len(args) != 2 {
+			return usageError(d, "completion needs a shell: zsh, bash or fish")
+		}
+		script, ok := hooks.Completion(args[1])
+		if !ok {
+			return usageError(d, "completion needs a shell: zsh, bash or fish")
 		}
 		fmt.Fprint(d.Stdout, script)
 		return 0

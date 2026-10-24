@@ -80,3 +80,15 @@ func TestUnknownShell(t *testing.T) {
 		t.Fatal(s, ok)
 	}
 }
+
+func TestCompletion(t *testing.T) {
+	for _, sh := range []string{"zsh", "bash", "fish"} {
+		s, ok := Completion(sh)
+		if !ok || len(s) == 0 {
+			t.Fatalf("shell %s completion failed", sh)
+		}
+	}
+	if s, ok := Completion("tcsh"); ok || s != "" {
+		t.Fatal(s, ok)
+	}
+}

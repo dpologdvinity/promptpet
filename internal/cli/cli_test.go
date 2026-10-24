@@ -123,6 +123,20 @@ func TestInit(t *testing.T) {
 		t.Fatal(errb)
 	}
 }
+func TestCompletion(t *testing.T) {
+	d, out, errb := testDeps(t)
+	want, _ := hooks.Completion("bash")
+	if Run([]string{"completion", "bash"}, d) != 0 || out.String() != want {
+		t.Fatal(out)
+	}
+	if Run([]string{"completion", "tcsh"}, d) != 2 || errb.String() != "promptpet: completion needs a shell: zsh, bash or fish\n" {
+		t.Fatal(errb)
+	}
+	errb.Reset()
+	if Run([]string{"completion"}, d) != 2 || errb.String() != "promptpet: completion needs a shell: zsh, bash or fish\n" {
+		t.Fatal(errb)
+	}
+}
 func TestCorruptStateWarns(t *testing.T) {
 	d, _, errb := testDeps(t)
 	os.WriteFile(filepath.Join(d.Getenv("PROMPTPET_HOME"), "state.json"), []byte("{"), 0o600)

@@ -10,6 +10,19 @@ archives:
     files: [LICENSE, README.md]
 checksum:
   name_template: checksums.txt
+nfpms:
+  - id: default
+    package_name: promptpet
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    vendor: Kaitlyn Bassford
+    homepage: "https://github.com/dpologdvinity/promptpet"
+    maintainer: "Kaitlyn Bassford <kaitlynbassford@gmail.com>"
+    description: "A tiny pet that lives in your shell prompt"
+    license: "MIT"
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
 homebrew_casks:
   - repository:
       owner: dpologdvinity
