@@ -24,18 +24,18 @@ const (
 // LookAway is a Tamagotchi-style game: guess which direction pet looks (Left/Right).
 // 5 quick rounds; win 3+ to win.
 type LookAway struct {
-	pet         companion.PetDef
+	pet          companion.PetDef
 	currentRound int
-	maxRounds   int
-	wins        int
-	targetWins  int
-	state       int // 0 = waiting for input, 1 = showing round result
-	resultTimer int
-	playerGuess lookDirection
-	petLook     lookDirection
-	lastMatch   bool
-	done        bool
-	won         bool
+	maxRounds    int
+	wins         int
+	targetWins   int
+	state        int // 0 = waiting for input, 1 = showing round result
+	resultTimer  int
+	playerGuess  lookDirection
+	petLook      lookDirection
+	lastMatch    bool
+	done         bool
+	won          bool
 }
 
 // NewLookAway creates a new LookAway game.

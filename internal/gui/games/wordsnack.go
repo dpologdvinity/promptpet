@@ -193,7 +193,7 @@ func (g *WordSnack) Update() (done bool, won bool, score int) {
 func (g *WordSnack) calculateScore() int {
 	score := g.wordsCompleted * 300
 	if g.won {
-		score += (g.maxMisses - g.misses) * 100 + 400
+		score += (g.maxMisses-g.misses)*100 + 400
 	}
 	return score
 }

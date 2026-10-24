@@ -374,4 +374,3 @@ func TestAppMiniGameWinAndLossLifecycle(t *testing.T) {
 		t.Errorf("hearts should remain unchanged on loss, got %d", app.State().FriendshipHearts)
 	}
 }
-

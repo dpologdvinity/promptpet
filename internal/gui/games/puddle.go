@@ -14,29 +14,29 @@ import (
 )
 
 type obstacle struct {
-	dist    float32
-	isRock  bool
-	hit     bool
+	dist   float32
+	isRock bool
+	hit    bool
 }
 
 // PuddleLeap is a side-scrolling runner where pet leaps over obstacles toward the finish flag.
 type PuddleLeap struct {
-	pet            companion.PetDef
-	petX           float32
-	petY           float32
-	vy             float32
-	groundY        float32
-	gravity        float32
-	jumpVelocity   float32
-	progress       float32
-	finishDist     float32
-	scrollSpeed    float32
-	trips          int
-	maxTrips       int
-	obstacles      []obstacle
-	ticks          int64
-	done           bool
-	won            bool
+	pet          companion.PetDef
+	petX         float32
+	petY         float32
+	vy           float32
+	groundY      float32
+	gravity      float32
+	jumpVelocity float32
+	progress     float32
+	finishDist   float32
+	scrollSpeed  float32
+	trips        int
+	maxTrips     int
+	obstacles    []obstacle
+	ticks        int64
+	done         bool
+	won          bool
 }
 
 // NewPuddleLeap creates a new PuddleLeap game.

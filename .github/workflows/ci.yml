@@ -67,6 +67,9 @@ jobs:
       - name: Run tests with coverage & race detector
         run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
+      - name: Run performance benchmarks
+        run: go test -bench=. -run=^$ ./test/...
+
       - name: Generate text coverage report
         run: go tool cover -func=coverage.out
 

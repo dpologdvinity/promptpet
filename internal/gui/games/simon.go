@@ -196,8 +196,8 @@ func (g *MemorySimon) Draw(screen *ebiten.Image) {
 	// 3 Button positions
 	btnPositions := [3]float32{65, 120, 175}
 	btnColors := [3]color.RGBA{
-		{R: 78, G: 204, B: 163, A: 255}, // 1: Teal / Green
-		{R: 246, G: 201, B: 14, A: 255}, // 2: Amber / Yellow
+		{R: 78, G: 204, B: 163, A: 255},  // 1: Teal / Green
+		{R: 246, G: 201, B: 14, A: 255},  // 2: Amber / Yellow
 		{R: 255, G: 107, B: 107, A: 255}, // 3: Coral / Red
 	}
 

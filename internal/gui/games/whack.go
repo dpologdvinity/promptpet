@@ -17,20 +17,20 @@ import (
 // Pests pop up to be whacked with keys 1, 2, 3. Ladybugs must be avoided.
 // Whack 6 pests to win before 3 misses/penalties.
 type WhackABug struct {
-	pet          companion.PetDef
-	targetHits   int
-	hits         int
-	misses       int
-	maxMisses    int
-	currentHole  int // 1, 2, 3 or 0 (none)
-	isLadybug    bool
-	bugTimer     int
-	spawnTimer   int
-	whackedHole  int
-	whackTimer   int
-	ticks        int64
-	done         bool
-	won          bool
+	pet         companion.PetDef
+	targetHits  int
+	hits        int
+	misses      int
+	maxMisses   int
+	currentHole int // 1, 2, 3 or 0 (none)
+	isLadybug   bool
+	bugTimer    int
+	spawnTimer  int
+	whackedHole int
+	whackTimer  int
+	ticks       int64
+	done        bool
+	won         bool
 }
 
 // NewWhackABug creates a new WhackABug game.
@@ -209,7 +209,7 @@ func (g *WhackABug) Update() (done bool, won bool, score int) {
 }
 
 func (g *WhackABug) calculateScore() int {
-	score := g.hits * 150 - g.misses * 50
+	score := g.hits*150 - g.misses*50
 	if score < 0 {
 		score = 0
 	}

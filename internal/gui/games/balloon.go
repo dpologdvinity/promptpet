@@ -256,7 +256,7 @@ func (g *BalloonPop) Update() (done bool, won bool, score int) {
 func (g *BalloonPop) calculateScore() int {
 	score := g.popped * 200
 	if g.won {
-		score += (g.maxMisses - g.misses) * 100 + 400
+		score += (g.maxMisses-g.misses)*100 + 400
 	}
 	return score
 }
