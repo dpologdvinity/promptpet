@@ -1,18 +1,123 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  setup:
+    name: Setup & Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go environment
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify Go dependencies
+        run: |
+          go mod verify
+          go mod download
+
+  lint:
+    name: Lint & Static Analysis
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go environment
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check code formatting
+        run: |
+          DIFF="$(gofmt -s -l .)"
+          if [ -n "$DIFF" ]; then
+            echo "gofmt found unformatted files:"
+            echo "$DIFF"
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
   test:
+    name: Test Suite (${{ matrix.os }})
+    needs: setup
     strategy:
+      fail-fast: true
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go environment
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - if: runner.os == 'Linux'
+          cache: true
+
+      - name: Install shell test dependencies (Linux)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh fish
-      - run: test -z "$(gofmt -l .)"
-      - run: go vet ./...
-      - run: go test ./...
+
+      - name: Install shell test dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install fish || true
+
+      - name: Run tests with coverage & race detector
+        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Generate text coverage report
+        run: go tool cover -func=coverage.out
+
+      - name: Upload coverage artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 7
+
+  build:
+    name: Build & Verify Artifacts
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go environment
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build snapshot artifacts with GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: build --snapshot --clean
+
+      - name: Verify compiled executable
+        run: |
+          ./dist/promptpet_linux_amd64_v1/promptpet --version
+          ./dist/promptpet_linux_amd64_v1/promptpet --help
