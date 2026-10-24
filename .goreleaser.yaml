@@ -10,3 +10,11 @@ archives:
     files: [LICENSE, README.md]
 checksum:
   name_template: checksums.txt
+homebrew_casks:
+  - repository:
+      owner: dpologdvinity
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/dpologdvinity/promptpet"
+    description: "A tiny pet that lives in your shell prompt"
+    license: "MIT"

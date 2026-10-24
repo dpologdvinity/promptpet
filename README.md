@@ -10,6 +10,12 @@ A tiny pet that lives in your shell prompt: `(=^･ω･^=) ♥♥♡`.
 
 ### 1. Install
 
+Using Homebrew:
+
+```sh
+brew install dpologdvinity/tap/promptpet
+```
+
 Using Go:
 
 ```sh
