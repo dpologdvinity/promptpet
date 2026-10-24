@@ -31,7 +31,12 @@ func runPrompt(args []string, d Deps) int {
 	if lockErr == nil {
 		defer unlock()
 	}
-	s, _, err := store.LoadState(dir, now)
+	var s *pet.State
+	if lockErr == nil {
+		s, _, err = store.LoadState(dir, now)
+	} else {
+		s, err = store.LoadStateReadOnly(dir, now)
+	}
 	if err != nil {
 		return 0
 	}

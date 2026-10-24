@@ -52,6 +52,13 @@ func Lock(dir, name string, budget time.Duration) (func(), error) {
 	}
 }
 func LoadState(dir string, now time.Time) (*pet.State, string, error) {
+	return loadState(dir, now, true)
+}
+func LoadStateReadOnly(dir string, now time.Time) (*pet.State, error) {
+	s, _, err := loadState(dir, now, false)
+	return s, err
+}
+func loadState(dir string, now time.Time, recoverCorrupt bool) (*pet.State, string, error) {
 	path := filepath.Join(dir, "state.json")
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -62,11 +69,27 @@ func LoadState(dir string, now time.Time) (*pet.State, string, error) {
 	}
 	var s pet.State
 	if json.Unmarshal(data, &s) != nil {
-		moved := fmt.Sprintf("%s.corrupt-%d", path, now.Unix())
-		if err := os.Rename(path, moved); err != nil {
-			return nil, "", err
+		if !recoverCorrupt {
+			return pet.New(now), "", nil
 		}
-		return pet.New(now), moved, nil
+		base := fmt.Sprintf("%s.corrupt-%d", path, now.Unix())
+		for i := 0; ; i++ {
+			moved := base
+			if i > 0 {
+				moved = fmt.Sprintf("%s-%d", base, i)
+			}
+			_, err := os.Lstat(moved)
+			if err == nil {
+				continue
+			}
+			if !errors.Is(err, os.ErrNotExist) {
+				return nil, "", err
+			}
+			if err := os.Rename(path, moved); err != nil {
+				return nil, "", err
+			}
+			return pet.New(now), moved, nil
+		}
 	}
 	if s.Version > 1 {
 		return nil, "", ErrNewer

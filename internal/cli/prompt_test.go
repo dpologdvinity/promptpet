@@ -121,3 +121,27 @@ func BenchmarkPrompt(b *testing.B) {
 		Run([]string{"prompt"}, d)
 	}
 }
+
+func TestPromptLockBusyDoesNotRecoverCorruptState(t *testing.T) {
+	d, out, _ := testDeps(t)
+	dir := d.Getenv("PROMPTPET_HOME")
+	path := filepath.Join(dir, "state.json")
+	if err := os.WriteFile(path, []byte("{broken"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	unlock, err := store.Lock(dir, "state.lock", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	if code := Run([]string{"prompt"}, d); code != 0 || out.Len() == 0 {
+		t.Fatalf("code=%d output=%q", code, out.String())
+	}
+	if got, err := os.ReadFile(path); err != nil || string(got) != "{broken" {
+		t.Fatalf("state changed: %q %v", got, err)
+	}
+	backups, err := filepath.Glob(path + ".corrupt-*")
+	if err != nil || len(backups) != 0 {
+		t.Fatalf("backups=%v err=%v", backups, err)
+	}
+}

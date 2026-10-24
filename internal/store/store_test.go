@@ -91,3 +91,31 @@ func TestLockBusy(t *testing.T) {
 		t.Fatal("lock wait exceeded budget")
 	}
 }
+
+func TestLoadStateCorruptPreservesBothBackupsInSameSecond(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+	if err := os.WriteFile(path, []byte("{first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, first, err := LoadState(dir, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("{second"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, second, err := LoadState(dir, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second {
+		t.Fatalf("backup collision: %s", first)
+	}
+	for path, want := range map[string]string{first: "{first", second: "{second"} {
+		got, err := os.ReadFile(path)
+		if err != nil || string(got) != want {
+			t.Fatalf("%s: %q %v", path, got, err)
+		}
+	}
+}
