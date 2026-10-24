@@ -258,6 +258,50 @@ func TestAppMiniGameLauncherAndEsc(t *testing.T) {
 	if app.ActiveGame() == nil || app.ActiveGame().Name() != "Rhythm Dance" {
 		t.Fatalf("expected Rhythm Dance active, got %v", app.ActiveGame())
 	}
+
+	// Launch game 5 (Simon)
+	app.LaunchGameByID(5)
+	if app.ActiveGame() == nil || app.ActiveGame().Name() != "Memory Simon" {
+		t.Fatalf("expected Memory Simon active, got %v", app.ActiveGame())
+	}
+	app.Draw(screen)
+	app.ExitGame()
+	if app.ActiveGame() != nil {
+		t.Fatalf("expected activeGame to be nil after exit")
+	}
+
+	// Launch game 6 (Whack)
+	app.LaunchGameByID(6)
+	if app.ActiveGame() == nil || app.ActiveGame().Name() != "Whack-a-Bug" {
+		t.Fatalf("expected Whack-a-Bug active, got %v", app.ActiveGame())
+	}
+	app.Draw(screen)
+	app.ExitGame()
+	if app.ActiveGame() != nil {
+		t.Fatalf("expected activeGame to be nil after exit")
+	}
+
+	// Launch game 7 (Balloon)
+	app.LaunchGameByID(7)
+	if app.ActiveGame() == nil || app.ActiveGame().Name() != "Balloon Pop" {
+		t.Fatalf("expected Balloon Pop active, got %v", app.ActiveGame())
+	}
+	app.Draw(screen)
+	app.ExitGame()
+	if app.ActiveGame() != nil {
+		t.Fatalf("expected activeGame to be nil after exit")
+	}
+
+	// Launch game 8 (Word Snack)
+	app.LaunchGameByID(8)
+	if app.ActiveGame() == nil || app.ActiveGame().Name() != "Word Snack" {
+		t.Fatalf("expected Word Snack active, got %v", app.ActiveGame())
+	}
+	app.Draw(screen)
+	app.ExitGame()
+	if app.ActiveGame() != nil {
+		t.Fatalf("expected activeGame to be nil after exit")
+	}
 }
 
 func TestAppMiniGameWinAndLossLifecycle(t *testing.T) {

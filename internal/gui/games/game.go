@@ -34,3 +34,17 @@ func drawRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, clr
 	vector.DrawFilledRect(dst, x+radius, y, width-2*radius, height, clr, true)
 	vector.DrawFilledRect(dst, x, y+radius, width, height-2*radius, clr, true)
 }
+
+// GetAllMiniGames returns a slice containing instances of all 8 mini-games.
+func GetAllMiniGames() []MiniGame {
+	return []MiniGame{
+		NewSnackCatch(),
+		NewPuddleLeap(),
+		NewLookAway(),
+		NewRhythmDance(),
+		NewMemorySimon(),
+		NewWhackABug(),
+		NewBalloonPop(),
+		NewWordSnack(),
+	}
+}

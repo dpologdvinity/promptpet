@@ -141,7 +141,7 @@ func (a *App) ActiveGame() games.MiniGame {
 	return a.activeGame
 }
 
-// LaunchGameByID launches mini-game 1 (Catch), 2 (Leap), 3 (Look Away), or 4 (Rhythm).
+// LaunchGameByID launches mini-game 1 through 8.
 func (a *App) LaunchGameByID(id int) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -166,6 +166,14 @@ func (a *App) launchGameLocked(id int) {
 		g = games.NewLookAway()
 	case 4:
 		g = games.NewRhythmDance()
+	case 5:
+		g = games.NewMemorySimon()
+	case 6:
+		g = games.NewWhackABug()
+	case 7:
+		g = games.NewBalloonPop()
+	case 8:
+		g = games.NewWordSnack()
 	default:
 		return
 	}
@@ -223,7 +231,7 @@ func (a *App) Update() error {
 	}
 
 	// 2. Companion view controls:
-	// Mini-game launcher keys: 1, 2, 3, 4
+	// Mini-game launcher keys: 1, 2, 3, 4, 5, 6, 7, 8
 	if inpututil.IsKeyJustPressed(ebiten.KeyDigit1) || inpututil.IsKeyJustPressed(ebiten.Key1) {
 		a.launchGameLocked(1)
 		a.mu.Unlock()
@@ -238,6 +246,22 @@ func (a *App) Update() error {
 		return nil
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit4) || inpututil.IsKeyJustPressed(ebiten.Key4) {
 		a.launchGameLocked(4)
+		a.mu.Unlock()
+		return nil
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit5) || inpututil.IsKeyJustPressed(ebiten.Key5) {
+		a.launchGameLocked(5)
+		a.mu.Unlock()
+		return nil
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit6) || inpututil.IsKeyJustPressed(ebiten.Key6) {
+		a.launchGameLocked(6)
+		a.mu.Unlock()
+		return nil
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit7) || inpututil.IsKeyJustPressed(ebiten.Key7) {
+		a.launchGameLocked(7)
+		a.mu.Unlock()
+		return nil
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit8) || inpututil.IsKeyJustPressed(ebiten.Key8) {
+		a.launchGameLocked(8)
 		a.mu.Unlock()
 		return nil
 	}
