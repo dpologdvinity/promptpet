@@ -645,9 +645,9 @@ func TestFindDirAndSig(t *testing.T) {
 }
 func TestFindGitFile(t *testing.T) {
     root := t.TempDir()
-    real := filepath.Join(root, "main", ".git", "worktrees", "wt"); os.MkdirAll(real, 0o755)
+    real := filepath.Join(root, "master", ".git", "worktrees", "wt"); os.MkdirAll(real, 0o755)
     wt := filepath.Join(root, "wt"); os.MkdirAll(wt, 0o755)
-    os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: ../main/.git/worktrees/wt\n"), 0o644)
+    os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: ../master/.git/worktrees/wt\n"), 0o644)
     gotWt, gd, ok := Find(wt)
     if !ok || gotWt != wt || gd != real { t.Fatal(gotWt, gd, ok) }
 }
@@ -690,7 +690,7 @@ git commit -m "feat(repo): locate the git dir and reflog signature with stat onl
 
 - [ ] **Step 1: Write the failing tests**
 
-Test helper `gitRepo(t) string`: create `t.TempDir()`, set `t.Setenv` for `HOME`, `XDG_CONFIG_HOME` (temp), `GIT_CONFIG_GLOBAL` (temp empty file), `GIT_CONFIG_NOSYSTEM=1`; run `git init -q -b main`, `git config user.email me@example.com`, `git config user.name Me`, `git config commit.gpgsign false`. Helper `commit(t, dir, unix int64, email string)` runs `git commit -q --allow-empty -m c` with env `GIT_AUTHOR_DATE=@<unix> +0000`, `GIT_COMMITTER_DATE=@<unix> +0000`, `GIT_AUTHOR_NAME=Me`, `GIT_AUTHOR_EMAIL=<email>`, `GIT_COMMITTER_NAME=Me`, `GIT_COMMITTER_EMAIL=<email>` (so commits work even after `user.email` is unset).
+Test helper `gitRepo(t) string`: create `t.TempDir()`, set `t.Setenv` for `HOME`, `XDG_CONFIG_HOME` (temp), `GIT_CONFIG_GLOBAL` (temp empty file), `GIT_CONFIG_NOSYSTEM=1`; run `git init -q -b master`, `git config user.email me@example.com`, `git config user.name Me`, `git config commit.gpgsign false`. Helper `commit(t, dir, unix int64, email string)` runs `git commit -q --allow-empty -m c` with env `GIT_AUTHOR_DATE=@<unix> +0000`, `GIT_COMMITTER_DATE=@<unix> +0000`, `GIT_AUTHOR_NAME=Me`, `GIT_AUTHOR_EMAIL=<email>`, `GIT_COMMITTER_NAME=Me`, `GIT_COMMITTER_EMAIL=<email>` (so commits work even after `user.email` is unset).
 
 ```go
 func TestFeedNewRepoOnlyRecent(t *testing.T) {

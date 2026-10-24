@@ -19,7 +19,7 @@ func gitRepo(t *testing.T) string {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(t.TempDir(), "global"))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-	for _, args := range [][]string{{"init", "-q", "-b", "main", root}, {"-C", root, "config", "user.email", "me@example.com"}, {"-C", root, "config", "user.name", "Me"}, {"-C", root, "config", "commit.gpgsign", "false"}} {
+	for _, args := range [][]string{{"init", "-q", "-b", "master", root}, {"-C", root, "config", "user.email", "me@example.com"}, {"-C", root, "config", "user.name", "Me"}, {"-C", root, "config", "commit.gpgsign", "false"}} {
 		cmd := exec.Command("git", args...)
 		if b, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %s: %v", args, b, err)

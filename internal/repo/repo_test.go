@@ -26,11 +26,11 @@ func TestFindDirAndSig(t *testing.T) {
 }
 func TestFindGitFile(t *testing.T) {
 	root := t.TempDir()
-	real := filepath.Join(root, "main", ".git", "worktrees", "wt")
+	real := filepath.Join(root, "master", ".git", "worktrees", "wt")
 	os.MkdirAll(real, 0o755)
 	wt := filepath.Join(root, "wt")
 	os.MkdirAll(wt, 0o755)
-	os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: ../main/.git/worktrees/wt\n"), 0o644)
+	os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: ../master/.git/worktrees/wt\n"), 0o644)
 	gotWt, gd, ok := Find(wt)
 	if !ok || gotWt != wt || gd != real {
 		t.Fatal(gotWt, gd, ok)
