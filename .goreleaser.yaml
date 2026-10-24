@@ -36,11 +36,3 @@ nfpms:
         dst: /usr/share/fish/vendor_completions.d/promptpet.fish
         file_info:
           mode: 0644
-homebrew_casks:
-  - repository:
-      owner: dpologdvinity
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    homepage: "https://github.com/dpologdvinity/promptpet"
-    description: "A tiny pet that lives in your shell prompt"
-    license: "MIT"

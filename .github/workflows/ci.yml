@@ -14,27 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  setup:
-    name: Setup & Dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Go environment
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Verify Go dependencies
-        run: |
-          go mod verify
-          go mod download
-
   lint:
     name: Lint & Static Analysis
-    needs: setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -60,7 +41,6 @@ jobs:
 
   test:
     name: Test Suite (${{ matrix.os }})
-    needs: setup
     strategy:
       fail-fast: true
       matrix:
