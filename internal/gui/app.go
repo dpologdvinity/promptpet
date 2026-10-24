@@ -12,6 +12,7 @@ import (
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
 	"github.com/dpologdvinity/promptpet/internal/event"
+	"github.com/dpologdvinity/promptpet/internal/gui/games"
 )
 
 // ErrHeadless is returned when attempting to run the GUI in an environment without a display server.
@@ -39,6 +40,7 @@ type App struct {
 	lastWellness  time.Time
 	idleThrottled bool
 	throttleSleep time.Duration
+	activeGame    games.MiniGame
 }
 
 // NewApp initializes a new companion application.
@@ -132,11 +134,113 @@ func (a *App) cyclePetLocked() {
 	}
 }
 
+// ActiveGame returns the currently active mini-game, or nil if in companion view.
+func (a *App) ActiveGame() games.MiniGame {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.activeGame
+}
+
+// LaunchGameByID launches mini-game 1 (Catch), 2 (Leap), 3 (Look Away), or 4 (Rhythm).
+func (a *App) LaunchGameByID(id int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.launchGameLocked(id)
+}
+
+// ExitGame exits the active mini-game back to companion view without losing state.
+func (a *App) ExitGame() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.exitGameLocked()
+}
+
+func (a *App) launchGameLocked(id int) {
+	var g games.MiniGame
+	switch id {
+	case 1:
+		g = games.NewSnackCatch()
+	case 2:
+		g = games.NewPuddleLeap()
+	case 3:
+		g = games.NewLookAway()
+	case 4:
+		g = games.NewRhythmDance()
+	default:
+		return
+	}
+	g.Init(a.activePet)
+	a.activeGame = g
+}
+
+func (a *App) exitGameLocked() {
+	a.activeGame = nil
+}
+
+func (a *App) finishGameLocked(won bool, score int) {
+	if a.activeGame == nil {
+		return
+	}
+	gameName := a.activeGame.Name()
+	if won {
+		a.state.FriendshipHearts++
+		a.speech = "You won!"
+	} else {
+		a.speech = "Good try!"
+	}
+
+	if a.state.HighScores == nil {
+		a.state.HighScores = make(map[string]int)
+	}
+	if score > a.state.HighScores[gameName] {
+		a.state.HighScores[gameName] = score
+	}
+
+	_ = companion.SaveState(a.cfg.StatePath, a.state)
+	a.activeGame = nil
+}
+
 // Update handles input, event polling, rhythm evaluation, and throttling.
 func (a *App) Update() error {
 	a.mu.Lock()
 
 	a.ticks++
+
+	// 1. If mini-game is active, prioritize game loop and handle Esc early exit
+	if a.activeGame != nil {
+		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+			a.exitGameLocked()
+			a.mu.Unlock()
+			return nil
+		}
+
+		done, won, score := a.activeGame.Update()
+		if done {
+			a.finishGameLocked(won, score)
+		}
+		a.mu.Unlock()
+		return nil
+	}
+
+	// 2. Companion view controls:
+	// Mini-game launcher keys: 1, 2, 3, 4
+	if inpututil.IsKeyJustPressed(ebiten.KeyDigit1) || inpututil.IsKeyJustPressed(ebiten.Key1) {
+		a.launchGameLocked(1)
+		a.mu.Unlock()
+		return nil
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit2) || inpututil.IsKeyJustPressed(ebiten.Key2) {
+		a.launchGameLocked(2)
+		a.mu.Unlock()
+		return nil
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit3) || inpututil.IsKeyJustPressed(ebiten.Key3) {
+		a.launchGameLocked(3)
+		a.mu.Unlock()
+		return nil
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit4) || inpututil.IsKeyJustPressed(ebiten.Key4) {
+		a.launchGameLocked(4)
+		a.mu.Unlock()
+		return nil
+	}
 
 	// Tab key cycles active pet
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
@@ -145,7 +249,7 @@ func (a *App) Update() error {
 
 	now := time.Now()
 
-	// 1. Inter-process event polling: throttled to 1s to prevent 20Hz disk I/O
+	// 3. Inter-process event polling: throttled to 1s to prevent 20Hz disk I/O
 	if now.Sub(a.lastEventPoll) >= 1*time.Second {
 		a.lastEventPoll = now
 		events, err := event.ReadEventsSince(a.cfg.EventPath, a.lastReadTs)
@@ -165,7 +269,7 @@ func (a *App) Update() error {
 		}
 	}
 
-	// 2. Wellness check: evaluate hydration, stretch, and eye rest intervals
+	// 4. Wellness check: evaluate hydration, stretch, and eye rest intervals
 	if now.Sub(a.lastWellness) >= 2*time.Second {
 		a.lastWellness = now
 		reminder := a.state.CheckWellness(now)
@@ -181,7 +285,7 @@ func (a *App) Update() error {
 	}
 	a.mu.Unlock()
 
-	// 3. Frame rate sleep throttling outside mutex lock to avoid blocking readers
+	// 5. Frame rate sleep throttling outside mutex lock to avoid blocking readers
 	if sleepDuration > 0 {
 		time.Sleep(sleepDuration)
 	}
@@ -195,11 +299,16 @@ func (a *App) Draw(screen *ebiten.Image) {
 	pet := a.activePet
 	ticks := a.ticks
 	speech := a.speech
+	activeGame := a.activeGame
 	a.mu.Unlock()
 
 	DrawDevice(screen, pet)
-	DrawPet(screen, pet, ticks)
-	DrawSpeechBubble(screen, speech, pet)
+	if activeGame != nil {
+		activeGame.Draw(screen)
+	} else {
+		DrawPet(screen, pet, ticks)
+		DrawSpeechBubble(screen, speech, pet)
+	}
 }
 
 // Layout returns the fixed virtual screen size of 240x340 px.
