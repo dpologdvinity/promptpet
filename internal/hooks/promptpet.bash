@@ -1,4 +1,5 @@
 # promptpet hook for bash: eval "$(promptpet init bash)"
+# broadcasts command exit status to promptpet for companion event streaming
 _promptpet_precmd() {
   local __pp_exit=$?
   PROMPTPET_SEGMENT="$(command promptpet prompt --exit "$__pp_exit" 2>/dev/null)"

@@ -20,6 +20,9 @@ var completionBash string
 //go:embed completion.fish
 var completionFish string
 
+// Script returns the shell integration hook for the specified shell.
+// The hook captures the previous command's exit code and passes it to
+// `promptpet prompt`, allowing promptpet to broadcast command completion events.
 func Script(shell string) (string, bool) {
 	switch shell {
 	case "zsh":

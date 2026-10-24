@@ -1,4 +1,5 @@
 # promptpet hook for fish: promptpet init fish | source
+# broadcasts command exit status to promptpet for companion event streaming
 if not functions -q _promptpet_orig_prompt
     functions -q fish_prompt; and functions -c fish_prompt _promptpet_orig_prompt
     function _promptpet_status
