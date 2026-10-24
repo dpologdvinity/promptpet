@@ -59,7 +59,7 @@
   ```
   Test helper in `cli_test.go` (used by Tasks 12–13): `func testDeps(t *testing.T) (Deps, *bytes.Buffer, *bytes.Buffer)` returning deps with `Now` fixed at `t0`, `Rand` PCG(1,2), `Getenv` reading a map that has `PROMPTPET_HOME=t.TempDir()`, `Getwd` returning `t.TempDir()`, and `Spawn` recording its argument in a slice the test can read.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 func TestVersion(t *testing.T) {
@@ -75,12 +75,12 @@ func TestHelpAndUnknown(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/cli/ -run 'TestVersion|TestHelpAndUnknown'`
 Expected: FAIL (build error: `undefined: Run`)
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `go mod init github.com/dpologdvinity/promptpet`, then set the `go` line to `go 1.26`. `main.go`: `var version = "dev"`; `func main() { os.Exit(cli.Run(os.Args[1:], cli.RealDeps(version))) }`. `Run` dispatches on `args[0]`: `--version`/`-V`, `--help`/`-h`/`help` (usage text verbatim from SPEC §4.1), else the unknown-command error. Leave other subcommands as unknown for now. `realSpawn` per SPEC §7.1 (`os.Executable`, `Setsid`, `Start`, `Release`).
 `LICENSE`: standard MIT text with `Copyright (c) 2026 Kaitlyn Bassford`. `.gitignore`: `dist/` and `.env`.
@@ -88,12 +88,12 @@ Expected: FAIL (build error: `undefined: Run`)
 `.github/workflows/release.yml`: on push tags `v*`; `permissions: contents: write`; checkout with `fetch-depth: 0`, setup-go, `goreleaser/goreleaser-action@v7` with `version: "~> v2"`, `args: release --clean`, env `GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`.
 `.goreleaser.yaml`: `version: 2`, `project_name: promptpet`, one build with `env: [CGO_ENABLED=0]`, `goos: [linux, darwin]`, `goarch: [amd64, arm64]`, `ldflags: ["-s -w -X main.version={{.Version}}"]`; archives `formats: [tar.gz]` with `files: [LICENSE, README.md]`; `checksum.name_template: checksums.txt`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/cli/ && go vet ./... && test -z "$(gofmt -l .)"`
 Expected: PASS, no output from gofmt
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add go.mod main.go LICENSE .gitignore internal/cli .github .goreleaser.yaml
@@ -111,7 +111,7 @@ git commit -m "chore: scaffold promptpet CLI with CI and release config"
 **Interfaces:**
 - Produces: `State`, `RepoSig` (fields and JSON tags exactly as SPEC §5.2); constants of SPEC §6.1 as exported `const`s with those names (`FoodPerHour`, `FunPerHour`, `HealthPerHour`, `MealFood`, `MealFun`, `FailHealth`, `OKHealth`, `PetFun`, `PetHealth`, `PlayFun`, `MaxTickHours`, `SleepyGap`, `SickBelow`, `HungryBelow`, `BoredBelow`, `MaxMealsPerCheck`); `func New(now time.Time) *State`; `func Tick(s *State, now time.Time)`; unexported `clamp(v float64) float64` to `[0,100]`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 var t0 = time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
@@ -144,19 +144,19 @@ func TestTickClockBackwards(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/pet/`
 Expected: FAIL (build error: `undefined: New`)
 
-- [ ] **Step 3: Implement `New` and `Tick` exactly as SPEC §5.2 and §6.2**
+- [x] **Step 3: Implement `New` and `Tick` exactly as SPEC §5.2 and §6.2**
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/pet/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/pet
@@ -187,7 +187,7 @@ git commit -m "feat(pet): add pet state and time-based decay"
   func ValidSpecies(k string) bool
   ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func rng() *rand.Rand { return rand.New(rand.NewPCG(1, 2)) }
@@ -238,21 +238,21 @@ func TestValidName(t *testing.T) {
 
 Note: `rng()` returns a fresh generator with the same seed, so the test computes the same index the code draws.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/pet/`
 Expected: FAIL (build error: `undefined: ApplyExit`)
 
-- [ ] **Step 3: Implement per SPEC §6.3 and §8.3**
+- [x] **Step 3: Implement per SPEC §6.3 and §8.3**
 
 `Return` draws exactly one `rng.IntN(6)`; `Play` draws exactly one `rng.IntN(5)` after any `Return`. Species lines from SPEC §8.3. `ValidName`: trim, 1–20 runes, each rune `unicode.IsLetter || unicode.IsDigit || strings.ContainsRune(" -_'.", r)`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/pet/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/pet
@@ -271,7 +271,7 @@ git commit -m "feat(pet): add meals, exit reactions, petting, play and returning
 - Consumes: `State`, `New` (Task 2).
 - Produces: `type Mood int` with constants `Content, Happy, Eating, Sick, Startled, Confused, Sleepy, Hungry, Bored, Away` (that order); `type MoodInput struct{ Now, PrevPrompt time.Time; Exit int; Ate bool }`; `func Hearts(s *State) int`; `func MoodOf(s *State, in MoodInput) Mood`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestHearts(t *testing.T) {
@@ -311,19 +311,19 @@ func TestMoodPriority(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/pet/ -run 'TestHearts|TestMoodPriority'`
 Expected: FAIL (build error: `undefined: Hearts`)
 
-- [ ] **Step 3: Implement `Hearts` and `MoodOf` per SPEC §6.4 and §6.5**
+- [x] **Step 3: Implement `Hearts` and `MoodOf` per SPEC §6.4 and §6.5**
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/pet/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/pet
@@ -342,7 +342,7 @@ git commit -m "feat(pet): add mood priority and hearts"
 - Consumes: `State`, `Mood`, `Hearts` (Tasks 2–4).
 - Produces: `func Segment(s *State, m Mood) string`; `func Face(species string, m Mood) string`; `var Moods = []Mood{Content, Happy, Eating, Sick, Startled, Confused, Sleepy, Hungry, Bored}`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestSegmentExamples(t *testing.T) {
@@ -369,21 +369,21 @@ func TestSegmentSafeCharacters(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/pet/ -run TestSegment`
 Expected: FAIL (build error: `undefined: Segment`)
 
-- [ ] **Step 3: Implement with the face table copied verbatim from SPEC §8.1**
+- [x] **Step 3: Implement with the face table copied verbatim from SPEC §8.1**
 
 Store faces as `map[string][9]string` indexed by `Mood`. Unknown species falls back to `cat`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/pet/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/pet
@@ -402,7 +402,7 @@ git commit -m "feat(pet): render the prompt segment for every species and mood"
 - Consumes: `State`, `Mood` (Tasks 2–4).
 - Produces: `func Card(s *State, m Mood, now time.Time) string` (ends with `\n`; includes the `Message` line when non-empty; does not clear it); `func MoodText(m Mood) string`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestCardExact(t *testing.T) {
@@ -429,19 +429,19 @@ func TestCardSingularAwayAndMessage(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/pet/ -run TestCard`
 Expected: FAIL (build error: `undefined: Card`)
 
-- [ ] **Step 3: Implement per SPEC §8.2** (art, eyes and mood text verbatim; bar format `fmt.Sprintf("%-7s %s %3d", label, bar, v)`)
+- [x] **Step 3: Implement per SPEC §8.2** (art, eyes and mood text verbatim; bar format `fmt.Sprintf("%-7s %s %3d", label, bar, v)`)
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/pet/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/pet
@@ -469,7 +469,7 @@ git commit -m "feat(pet): render the ASCII status card"
   func WriteAtomic(path string, data []byte) error                     // tmp-<pid> + rename, mode 0600
   ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func env(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
@@ -520,21 +520,21 @@ func TestLockBusy(t *testing.T) {
 
 Note: `flock` locks are per open file description, so the second `Lock` in the same process opens the file again and is refused, which is what this test relies on.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/store/`
 Expected: FAIL (build error: `undefined: Dir`)
 
-- [ ] **Step 3: Implement per SPEC §5.1 and §5.3**
+- [x] **Step 3: Implement per SPEC §5.1 and §5.3**
 
 `Dir` returns an error `cannot find a home directory` if all three sources are empty. Unlock closes the file descriptor (releasing the lock).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/store/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/store
@@ -561,7 +561,7 @@ git commit -m "feat(store): add state dir, flock, atomic save and corrupt-file r
   func SaveFeed(dir string, f *Feed) error // prunes to 200 keys per SPEC §7.2 step 8, then WriteAtomic
   ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestMealsAppendAndRead(t *testing.T) {
@@ -596,21 +596,21 @@ func TestFeedPrune(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/store/ -run 'Meals|Feed'`
 Expected: FAIL (build error: `undefined: AppendMeals`)
 
-- [ ] **Step 3: Implement per SPEC §7.2–§7.3**
+- [x] **Step 3: Implement per SPEC §7.2–§7.3**
 
 Prune order: sort keys by `(value asc, key asc)` and delete from the front until 200 remain.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/store/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/store
@@ -629,7 +629,7 @@ git commit -m "feat(store): add append-only meal log and feed bookkeeping"
 - Consumes: `pet.RepoSig` (Task 2).
 - Produces: `func Find(cwd string) (worktree, gitDir string, ok bool)`; `func Sig(gitDir string) (pet.RepoSig, bool)`.
 
-- [ ] **Step 1: Write the failing tests** (build fake repos with `os.MkdirAll`/`os.WriteFile`; no git needed)
+- [x] **Step 1: Write the failing tests** (build fake repos with `os.MkdirAll`/`os.WriteFile`; no git needed)
 
 ```go
 func TestFindDirAndSig(t *testing.T) {
@@ -657,19 +657,19 @@ func TestFindNone(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/repo/`
 Expected: FAIL (build error: `undefined: Find`)
 
-- [ ] **Step 3: Implement per SPEC §7.1** (relative `gitdir:` paths are joined with the dir holding `.git` and cleaned with `filepath.Clean`; at most 64 levels)
+- [x] **Step 3: Implement per SPEC §7.1** (relative `gitdir:` paths are joined with the dir holding `.git` and cleaned with `filepath.Clean`; at most 64 levels)
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/repo/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/repo
@@ -688,7 +688,7 @@ git commit -m "feat(repo): locate the git dir and reflog signature with stat onl
 - Consumes: `store.Lock`, `store.LoadFeed`, `store.SaveFeed`, `store.AppendMeals`, `store.ReadMeals`, `store.MealLine` (Tasks 7–8).
 - Produces: `func Run(ctx context.Context, dir, worktree string, now time.Time) error`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Test helper `gitRepo(t) string`: create `t.TempDir()`, set `t.Setenv` for `HOME`, `XDG_CONFIG_HOME` (temp), `GIT_CONFIG_GLOBAL` (temp empty file), `GIT_CONFIG_NOSYSTEM=1`; run `git init -q -b master`, `git config user.email me@example.com`, `git config user.name Me`, `git config commit.gpgsign false`. Helper `commit(t, dir, unix int64, email string)` runs `git commit -q --allow-empty -m c` with env `GIT_AUTHOR_DATE=@<unix> +0000`, `GIT_COMMITTER_DATE=@<unix> +0000`, `GIT_AUTHOR_NAME=Me`, `GIT_AUTHOR_EMAIL=<email>`, `GIT_COMMITTER_NAME=Me`, `GIT_COMMITTER_EMAIL=<email>` (so commits work even after `user.email` is unset).
 
@@ -724,21 +724,21 @@ func TestFeedNoEmail(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/feed/`
 Expected: FAIL (build error: `undefined: Run`)
 
-- [ ] **Step 3: Implement per SPEC §7.2**
+- [x] **Step 3: Implement per SPEC §7.2**
 
 Git via `exec.CommandContext(ctx, "git", "-C", worktree, ...)` with `cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0", "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")`. "No commits yet" and "no email" return `nil`. Lock `feed.lock` with `store.Lock(dir, "feed.lock", 5*time.Second)`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/feed/`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/feed
@@ -756,7 +756,7 @@ git commit -m "feat(feed): detect new commits by author time in a background run
 **Interfaces:**
 - Produces: `func Script(shell string) (string, bool)` (`zsh`, `bash`, `fish`; files via `//go:embed`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Helper `fakeBin(t, script string) string` writes an executable `promptpet` shell script into a temp dir and returns the dir. The fake prints `SEG:$3` (its third argument is the exit code).
 
@@ -779,19 +779,19 @@ Also `TestZshHook` (skip if `exec.LookPath("zsh")` fails): same as bash with `zs
 And `TestFishHook` (skip without fish): `fish --no-config -c 'function fish_prompt; echo -n "orig:$status"; end; source $argv[1]; source $argv[1]; false; fish_prompt' <hook>` expects stdout `SEG:1 orig:1` and empty stderr.
 `runShell(t, shell, args, path)` runs with env `PATH=<path>`, `HOME=<t.TempDir()>` and returns stdout and stderr as strings. `Script("tcsh")` returns `"", false`.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/hooks/`
 Expected: FAIL (build error: `undefined: Script`)
 
-- [ ] **Step 3: Write the three hook files verbatim from SPEC §10 and implement `Script`**
+- [x] **Step 3: Write the three hook files verbatim from SPEC §10 and implement `Script`**
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test -v ./internal/hooks/`
 Expected: PASS (zsh/fish tests PASS or SKIP when the shell is not installed)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/hooks
@@ -811,7 +811,7 @@ git commit -m "feat(hooks): add zsh, bash and fish prompt hooks that preserve ex
 - Consumes: `pet.Tick`, `pet.Meal`, `pet.ApplyExit`, `pet.MoodOf`, `pet.Segment` (Tasks 2–5); `store.Dir`, `store.Lock`, `store.LoadState`, `store.SaveState`, `store.ReadMeals`, `store.AppendMeals` (Tasks 7–8); `repo.Find`, `repo.Sig` (Task 9); `Deps`, `testDeps` (Task 1).
 - Produces: `func runPrompt(args []string, d Deps) int` (always returns 0).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestPromptFirstRun(t *testing.T) {
@@ -877,21 +877,21 @@ func BenchmarkPrompt(b *testing.B) { /* same deps with b.TempDir(); loop Run(pro
 
 `spawned(d)` and `withEnv(getenv, k, v)` are small helpers added to `cli_test.go` next to `testDeps` (`testDeps` stores spawn calls in a slice reachable from the returned deps, for example via a package-level map keyed by the state dir).
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/cli/ -run Prompt`
 Expected: FAIL (`unknown command "prompt"`)
 
-- [ ] **Step 3: Implement `runPrompt` following SPEC §9 steps 1–10 in order**
+- [x] **Step 3: Implement `runPrompt` following SPEC §9 steps 1–10 in order**
 
 Parse `--exit` by hand (`strconv.Atoi` on the value after `--exit`; on error use -1). Swallow every error. When `Getwd` fails, skip the repo check. Spawn only when the lock was taken (otherwise the new signature is not saved and every prompt would spawn).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/cli/ && go test -bench Prompt -run '^$' ./internal/cli/`
 Expected: PASS; benchmark reports well under 10 ms/op
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/cli
@@ -910,7 +910,7 @@ git commit -m "feat(cli): add the fast prompt command with background feeding"
 - Consumes: everything above; `hooks.Script` (Task 11); `feed.Run` (Task 10).
 - Produces: dispatch for `""` (no args: card), `init`, `pet`, `play`, `name`, `species`, `_feed`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestCardCommand(t *testing.T) {
@@ -958,21 +958,21 @@ func TestFeedCommandSilent(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/cli/`
 Expected: FAIL (`unknown command "name"` and others)
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 A shared helper `withState(d Deps, fn func(s *pet.State, ate bool) error) int` does SPEC §9 steps 2–5 with a 2 s lock budget, prints the corrupt-file warning, maps `ErrBusy`/`ErrNewer` to exit 1 with `promptpet: ` + the error text, calls `fn`, then saves. The card clears `s.Message` after printing. `_feed` calls `feed.Run(ctx with 5 s timeout, dir, args[1], d.Now())`, ignores the error, prints nothing and returns 0.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./...`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/cli
@@ -989,19 +989,19 @@ git commit -m "feat(cli): add status card, pet, play, name, species, init and _f
 **Interfaces:**
 - Consumes: the finished CLI.
 
-- [ ] **Step 1: Write README.md** with these sections: one-line pitch and a segment example; Install (`go install github.com/dpologdvinity/promptpet@latest`, release archives); Setup for zsh, bash and fish (the three lines from SPEC §4.1, and "put it at the end of your rc file so it wraps your final prompt"); What your pet reacts to (commits, failures, idle time, Ctrl-C ignored, exploring and coming back, all from SPEC §6); Commands (copy SPEC §4.1 usage); Privacy (reads only the current repo's last 50 commit times, author emails and short hashes, in a background process; stores only times, short hashes and the repo path under the state dir; no network); Environment (`PROMPTPET_HOME`, `PROMPTPET_DISABLE`, `$PROMPTPET_SEGMENT` for custom placement); License (MIT).
+- [x] **Step 1: Write README.md** with these sections: one-line pitch and a segment example; Install (`go install github.com/dpologdvinity/promptpet@latest`, release archives); Setup for zsh, bash and fish (the three lines from SPEC §4.1, and "put it at the end of your rc file so it wraps your final prompt"); What your pet reacts to (commits, failures, idle time, Ctrl-C ignored, exploring and coming back, all from SPEC §6); Commands (copy SPEC §4.1 usage); Privacy (reads only the current repo's last 50 commit times, author emails and short hashes, in a background process; stores only times, short hashes and the repo path under the state dir; no network); Environment (`PROMPTPET_HOME`, `PROMPTPET_DISABLE`, `$PROMPTPET_SEGMENT` for custom placement); License (MIT).
 
-- [ ] **Step 2: Full verification**
+- [x] **Step 2: Full verification**
 
 Run: `test -z "$(gofmt -l .)" && go vet ./... && go test ./... && go build -o /tmp/promptpet . && PROMPTPET_HOME=$(mktemp -d) /tmp/promptpet`
 Expected: all pass; the last command prints a cat card titled `Pip the cat - feeling great`.
 If `goreleaser` is installed: `goreleaser check` prints no errors.
 
-- [ ] **Step 3: Manual check (SPEC §13)**
+- [x] **Step 3: Manual check (SPEC §13)**
 
 In a scratch dir: `PROMPTPET_HOME=$(mktemp -d) zsh -f`, then `eval "$(/tmp/promptpet init zsh)"` (with `/tmp` on `PATH` as `promptpet`), `git init -q x && cd x && git commit -q --allow-empty -m hi`, press Enter twice. Expected: a prompt with ` nom ` appears within two prompts.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md
