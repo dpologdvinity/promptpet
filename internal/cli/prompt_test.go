@@ -26,7 +26,7 @@ func TestPromptMealAndExit(t *testing.T) {
 	dir := d.Getenv("PROMPTPET_HOME")
 	Run([]string{"prompt"}, d)
 	out.Reset()
-	store.AppendMeals(dir, []store.MealLine{{1, "aaaaaaa"}})
+	store.AppendMeals(dir, []store.MealLine{{Unix: 1, SHA: "aaaaaaa"}})
 	Run([]string{"prompt", "--exit", "1"}, d)
 	if !strings.HasPrefix(out.String(), "(=^･ω･^=) nom ") {
 		t.Fatalf("%q", out)
