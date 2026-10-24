@@ -91,4 +91,23 @@ func TestCompletion(t *testing.T) {
 	if s, ok := Completion("tcsh"); ok || s != "" {
 		t.Fatal(s, ok)
 	}
+
+	// Test execution of completion scripts in subshells
+	bashComp, _ := Completion("bash")
+	fb := filepath.Join(t.TempDir(), "comp.bash")
+	os.WriteFile(fb, []byte(bashComp), 0o644)
+	out, errOut := runShell(t, "bash", []string{"--norc", "-c", `source "$1"; type _promptpet_completions`, "x", fb}, "/usr/bin:/bin")
+	if !strings.Contains(out, "_promptpet_completions is a function") || errOut != "" {
+		t.Fatalf("bash completion failed: out=%q err=%q", out, errOut)
+	}
+
+	if _, err := exec.LookPath("zsh"); err == nil {
+		zshComp, _ := Completion("zsh")
+		fz := filepath.Join(t.TempDir(), "comp.zsh")
+		os.WriteFile(fz, []byte(zshComp), 0o644)
+		out, errOut = runShell(t, "zsh", []string{"-f", "-c", `autoload -Uz compinit && compinit -D; source "$1"; which _promptpet`, "x", fz}, "/usr/bin:/bin")
+		if !strings.Contains(out, "_promptpet ()") || errOut != "" {
+			t.Fatalf("zsh completion failed: out=%q err=%q", out, errOut)
+		}
+	}
 }

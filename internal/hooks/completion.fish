@@ -8,5 +8,6 @@ complete -c promptpet -n "__fish_use_subcommand" -a prompt -d "print prompt segm
 complete -c promptpet -n "__fish_use_subcommand" -a completion -d "generate shell completions"
 complete -c promptpet -n "__fish_seen_subcommand_from init completion" -a "zsh bash fish"
 complete -c promptpet -n "__fish_seen_subcommand_from species" -a "cat dragon blob"
+complete -c promptpet -n "__fish_seen_subcommand_from prompt" -l exit -d "exit code of last command"
 complete -c promptpet -s h -l help -d "show help"
 complete -c promptpet -s V -l version -d "print version"

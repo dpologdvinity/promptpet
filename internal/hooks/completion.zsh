@@ -33,9 +33,14 @@ _promptpet() {
         species)
           _values 'species' $species
           ;;
+        prompt)
+          _arguments '--exit[exit code of last command]:exit code:'
+          ;;
       esac
       ;;
   esac
 }
 
-_promptpet "$@"
+if type compdef >/dev/null 2>&1; then
+  compdef _promptpet promptpet
+fi

@@ -23,6 +23,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Run tests before release
+        run: |
+          go vet ./...
+          go test -v -race ./...
+
       - name: Run GoReleaser Release
         uses: goreleaser/goreleaser-action@v6
         with:

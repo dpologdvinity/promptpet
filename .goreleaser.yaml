@@ -23,6 +23,19 @@ nfpms:
       - deb
       - rpm
     bindir: /usr/bin
+    contents:
+      - src: internal/hooks/completion.bash
+        dst: /usr/share/bash-completion/completions/promptpet
+        file_info:
+          mode: 0644
+      - src: internal/hooks/completion.zsh
+        dst: /usr/share/zsh/vendor-completions/_promptpet
+        file_info:
+          mode: 0644
+      - src: internal/hooks/completion.fish
+        dst: /usr/share/fish/vendor_completions.d/promptpet.fish
+        file_info:
+          mode: 0644
 homebrew_casks:
   - repository:
       owner: dpologdvinity
