@@ -49,3 +49,50 @@ func Sig(gitDir string) (pet.RepoSig, bool) {
 	}
 	return pet.RepoSig{GitDir: gitDir, Size: fi.Size(), MtimeNs: fi.ModTime().UnixNano()}, true
 }
+
+type Info struct {
+	Branch      string
+	LastAction  string
+	CommitCount int
+}
+
+func GetInfo(gitDir string) Info {
+	var info Info
+	headData, err := os.ReadFile(filepath.Join(gitDir, "HEAD"))
+	if err == nil {
+		headStr := strings.TrimSpace(string(headData))
+		if strings.HasPrefix(headStr, "ref: refs/heads/") {
+			info.Branch = strings.TrimPrefix(headStr, "ref: refs/heads/")
+		} else if len(headStr) >= 7 {
+			info.Branch = headStr[:7]
+		}
+	}
+
+	logsData, err := os.ReadFile(filepath.Join(gitDir, "logs", "HEAD"))
+	if err == nil {
+		lines := strings.Split(strings.TrimSpace(string(logsData)), "\n")
+		commits := 0
+		var lastAction string
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			parts := strings.SplitN(line, "\t", 2)
+			if len(parts) == 2 {
+				actionMsg := parts[1]
+				action := strings.SplitN(actionMsg, ":", 2)[0]
+				action = strings.TrimSpace(action)
+				if strings.HasPrefix(action, "commit") {
+					commits++
+					lastAction = "commit"
+				} else {
+					lastAction = action
+				}
+			}
+		}
+		info.CommitCount = commits
+		info.LastAction = lastAction
+	}
+
+	return info
+}

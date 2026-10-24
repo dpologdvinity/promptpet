@@ -14,11 +14,11 @@ import (
 
 func statePath(d Deps) string {
 	if d.Getenv != nil {
-		if f := d.Getenv("PROMPTPET_STATE_FILE"); f != "" {
+		if f := d.Getenv("PROMPTPET_COMPANION_STATE_FILE"); f != "" {
 			return f
 		}
 		if dir, err := store.Dir(d.Getenv); err == nil {
-			return filepath.Join(dir, "state.json")
+			return filepath.Join(dir, "companion.json")
 		}
 	}
 	return companion.DefaultStatePath()

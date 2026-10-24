@@ -53,12 +53,38 @@ func runPrompt(args []string, d Deps) int {
 		pet.Meal(s, d.Rand)
 	}
 	s.EventOffset = off
+
+	var gitAction string
+	var gitBranch string
+	var commitCount int
+	var foundRepo bool
+	var repoWt, repoGd string
+
+	if cwd, err := d.Getwd(); err == nil {
+		if wt, gd, ok := repo.Find(cwd); ok {
+			foundRepo = true
+			repoWt = wt
+			repoGd = gd
+			info := repo.GetInfo(gd)
+			gitBranch = info.Branch
+			commitCount = info.CommitCount
+			if sig, ok := repo.Sig(gd); ok && sig != s.Repo {
+				if info.LastAction == "commit" {
+					gitAction = "commit"
+				}
+			}
+		}
+	}
+
 	if exit >= 0 {
 		pet.ApplyExit(s, exit)
 		ev := event.Event{
-			Type:      "command_finish",
-			ExitCode:  exit,
-			Timestamp: time.Now().Unix(),
+			Type:        "command_finish",
+			ExitCode:    exit,
+			Timestamp:   time.Now().Unix(),
+			GitAction:   gitAction,
+			GitBranch:   gitBranch,
+			CommitCount: commitCount,
 		}
 		if d.Now != nil {
 			ev.Timestamp = d.Now().Unix()
@@ -75,12 +101,10 @@ func runPrompt(args []string, d Deps) int {
 	s.LastPrompt = now
 	segment := pet.Segment(s, mood)
 	if lockErr == nil {
-		if cwd, err := d.Getwd(); err == nil {
-			if wt, gd, ok := repo.Find(cwd); ok {
-				if sig, ok := repo.Sig(gd); ok && sig != s.Repo {
-					s.Repo = sig
-					_ = d.Spawn(wt)
-				}
+		if foundRepo {
+			if sig, ok := repo.Sig(repoGd); ok && sig != s.Repo {
+				s.Repo = sig
+				_ = d.Spawn(repoWt)
 			}
 		}
 		_ = store.SaveState(dir, s)

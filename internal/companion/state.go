@@ -31,14 +31,14 @@ func NewDefaultState() *State {
 }
 
 func DefaultStatePath() string {
-	if f := os.Getenv("PROMPTPET_STATE_FILE"); f != "" {
+	if f := os.Getenv("PROMPTPET_COMPANION_STATE_FILE"); f != "" {
 		return f
 	}
 	dir, err := store.Dir(os.Getenv)
 	if err != nil {
-		return filepath.Join(os.TempDir(), "promptpet", "state.json")
+		return filepath.Join(os.TempDir(), "promptpet", "companion.json")
 	}
-	return filepath.Join(dir, "state.json")
+	return filepath.Join(dir, "companion.json")
 }
 
 func LoadState(path string) (*State, error) {

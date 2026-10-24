@@ -119,3 +119,56 @@ func TestRhythmEvaluationVariants(t *testing.T) {
 		t.Errorf("expected late night speech, got %q", speechNight)
 	}
 }
+
+func TestRhythmEvaluationGitMilestone(t *testing.T) {
+	now := time.Now()
+	s := &companion.State{}
+
+	// 1. 5th commit milestone
+	evCommit5 := []event.Event{
+		{Timestamp: now.Unix(), ExitCode: 0, GitAction: "commit", CommitCount: 5},
+	}
+	mood, speech := s.EvaluateRhythm(evCommit5, now)
+	if mood != companion.MoodCheer {
+		t.Errorf("expected MoodCheer, got %v", mood)
+	}
+	if speech != "5th commit! Amazing progress!" {
+		t.Errorf("expected '5th commit! Amazing progress!', got %q", speech)
+	}
+
+	// 2. 10th commit milestone
+	evCommit10 := []event.Event{
+		{Timestamp: now.Unix(), ExitCode: 0, GitAction: "commit", CommitCount: 10},
+	}
+	mood, speech = s.EvaluateRhythm(evCommit10, now)
+	if mood != companion.MoodCheer {
+		t.Errorf("expected MoodCheer, got %v", mood)
+	}
+	if speech != "10th commit! Amazing progress!" {
+		t.Errorf("expected '10th commit! Amazing progress!', got %q", speech)
+	}
+
+	// 3. Regular commit pushed
+	evCommitRegular := []event.Event{
+		{Timestamp: now.Unix(), ExitCode: 0, GitAction: "commit", CommitCount: 2},
+	}
+	mood, speech = s.EvaluateRhythm(evCommitRegular, now)
+	if mood != companion.MoodCheer {
+		t.Errorf("expected MoodCheer, got %v", mood)
+	}
+	if speech != "Commit pushed! High five!" {
+		t.Errorf("expected 'Commit pushed! High five!', got %q", speech)
+	}
+
+	// 4. Failed commit gets sympathy over milestone
+	evCommitFailed := []event.Event{
+		{Timestamp: now.Unix(), ExitCode: 1, GitAction: "commit", CommitCount: 5},
+	}
+	mood, speech = s.EvaluateRhythm(evCommitFailed, now)
+	if mood != companion.MoodSympathy {
+		t.Errorf("expected MoodSympathy for failed commit, got %v", mood)
+	}
+	if !strings.Contains(speech, "tea") {
+		t.Errorf("expected sympathy tea speech, got %q", speech)
+	}
+}

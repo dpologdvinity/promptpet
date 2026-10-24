@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,27 +21,28 @@ var ErrHeadless = errors.New("gui: no display available (headless environment)")
 
 // Config holds initialization paths for companion state and event IPC.
 type Config struct {
-	StatePath string
-	EventPath string
+	StatePath          string
+	EventPath          string
+	InitialEventOffset *int64
 }
 
 // App implements ebiten.Game to render the handheld virtual pet companion.
 type App struct {
-	mu            sync.Mutex
-	cfg           Config
-	state         *companion.State
-	pets          []companion.PetDef
-	petIndex      int
-	activePet     companion.PetDef
-	ticks         int64
-	speech        string
-	mood          companion.RhythmMood
-	lastReadTs    int64
-	lastEventPoll time.Time
-	lastWellness  time.Time
-	idleThrottled bool
-	throttleSleep time.Duration
-	activeGame    games.MiniGame
+	mu              sync.Mutex
+	cfg             Config
+	state           *companion.State
+	pets            []companion.PetDef
+	petIndex        int
+	activePet       companion.PetDef
+	ticks           int64
+	speech          string
+	mood            companion.RhythmMood
+	lastEventOffset int64
+	lastEventPoll   time.Time
+	lastWellness    time.Time
+	idleThrottled   bool
+	throttleSleep   time.Duration
+	activeGame      games.MiniGame
 }
 
 // NewApp initializes a new companion application.
@@ -73,18 +75,25 @@ func NewApp(cfg Config) (*App, error) {
 	active := allPets[petIdx]
 	initialSpeech := active.SpeechFor(string(companion.MoodResting))
 
+	var initialOffset int64
+	if cfg.InitialEventOffset != nil {
+		initialOffset = *cfg.InitialEventOffset
+	} else if fi, err := os.Stat(cfg.EventPath); err == nil {
+		initialOffset = fi.Size()
+	}
+
 	app := &App{
-		cfg:           cfg,
-		state:         state,
-		pets:          allPets,
-		petIndex:      petIdx,
-		activePet:     active,
-		speech:        initialSpeech,
-		mood:          companion.MoodResting,
-		lastReadTs:    time.Now().Unix() - 60,
-		lastEventPoll: time.Time{}, // allow immediate first read
-		lastWellness:  time.Time{}, // allow immediate first check
-		idleThrottled: true,
+		cfg:             cfg,
+		state:           state,
+		pets:            allPets,
+		petIndex:        petIdx,
+		activePet:       active,
+		speech:          initialSpeech,
+		mood:            companion.MoodResting,
+		lastEventOffset: initialOffset,
+		lastEventPoll:   time.Time{}, // allow immediate first read
+		lastWellness:    time.Time{}, // allow immediate first check
+		idleThrottled:   true,
 	}
 
 	return app, nil
@@ -109,6 +118,13 @@ func (a *App) State() *companion.State {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.state
+}
+
+// LastEventOffset returns the byte offset in the event stream that has been processed.
+func (a *App) LastEventOffset() int64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.lastEventOffset
 }
 
 // CyclePet cycles to the next mascot in the 8-pet roster and saves state.
@@ -179,10 +195,12 @@ func (a *App) launchGameLocked(id int) {
 	}
 	g.Init(a.activePet)
 	a.activeGame = g
+	ebiten.SetTPS(60)
 }
 
 func (a *App) exitGameLocked() {
 	a.activeGame = nil
+	ebiten.SetTPS(20)
 }
 
 func (a *App) finishGameLocked(won bool, score int) {
@@ -206,6 +224,7 @@ func (a *App) finishGameLocked(won bool, score int) {
 
 	_ = companion.SaveState(a.cfg.StatePath, a.state)
 	a.activeGame = nil
+	ebiten.SetTPS(20)
 }
 
 // Update handles input, event polling, rhythm evaluation, and throttling.
@@ -276,20 +295,18 @@ func (a *App) Update() error {
 	// 3. Inter-process event polling: throttled to 1s to prevent 20Hz disk I/O
 	if now.Sub(a.lastEventPoll) >= 1*time.Second {
 		a.lastEventPoll = now
-		events, err := event.ReadEventsSince(a.cfg.EventPath, a.lastReadTs)
-		if err == nil && len(events) > 0 {
-			var maxTs int64 = a.lastReadTs
-			for _, ev := range events {
-				if ev.Timestamp > maxTs {
-					maxTs = ev.Timestamp
+		events, newOffset, err := event.ReadEventsFromOffset(a.cfg.EventPath, a.lastEventOffset)
+		if err == nil {
+			a.lastEventOffset = newOffset
+			if len(events) > 0 {
+				mood, rSpeech := a.state.EvaluateRhythm(events, now)
+				a.mood = mood
+				if rSpeech != "" && (strings.Contains(rSpeech, "commit") || strings.Contains(rSpeech, "High five!")) {
+					a.speech = rSpeech
+				} else {
+					a.speech = a.activePet.SpeechFor(string(mood))
 				}
 			}
-			// Advance to max + 1 so seen events are not re-processed
-			a.lastReadTs = maxTs + 1
-
-			mood, _ := a.state.EvaluateRhythm(events, now)
-			a.mood = mood
-			a.speech = a.activePet.SpeechFor(string(mood))
 		}
 	}
 

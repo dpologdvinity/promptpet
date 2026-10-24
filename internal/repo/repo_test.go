@@ -44,3 +44,29 @@ func TestFindNone(t *testing.T) {
 		t.Fatal("found repo in missing dir")
 	}
 }
+
+func TestGetInfo(t *testing.T) {
+	root := t.TempDir()
+	gitDir := filepath.Join(root, ".git")
+	os.MkdirAll(filepath.Join(gitDir, "logs"), 0o755)
+
+	// Set branch
+	os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/feature-branch\n"), 0o644)
+
+	// Set logs/HEAD with commits and checkout
+	logContent := "000000 111111 User <u@example.com> 1000 +0000\tcommit (initial): first commit\n" +
+		"111111 222222 User <u@example.com> 2000 +0000\tcheckout: moving from a to b\n" +
+		"222222 333333 User <u@example.com> 3000 +0000\tcommit: second commit\n"
+	os.WriteFile(filepath.Join(gitDir, "logs", "HEAD"), []byte(logContent), 0o644)
+
+	info := GetInfo(gitDir)
+	if info.Branch != "feature-branch" {
+		t.Errorf("expected branch 'feature-branch', got %q", info.Branch)
+	}
+	if info.CommitCount != 2 {
+		t.Errorf("expected 2 commits, got %d", info.CommitCount)
+	}
+	if info.LastAction != "commit" {
+		t.Errorf("expected lastAction 'commit', got %q", info.LastAction)
+	}
+}

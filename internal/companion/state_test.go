@@ -11,7 +11,7 @@ import (
 
 func TestStatePersistence(t *testing.T) {
 	tmp := t.TempDir()
-	path := filepath.Join(tmp, "state.json")
+	path := filepath.Join(tmp, "companion.json")
 
 	// 1. Loading non-existent file returns default state
 	s, err := companion.LoadState(path)
@@ -78,5 +78,24 @@ func TestStatePersistence(t *testing.T) {
 	}
 	if sEmpty.ActivePet != "usagi" {
 		t.Errorf("expected fallback to 'usagi', got %q", sEmpty.ActivePet)
+	}
+}
+
+func TestDefaultStatePath(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 1. PROMPTPET_COMPANION_STATE_FILE takes highest precedence
+	custom := filepath.Join(tmpDir, "custom", "comp.json")
+	t.Setenv("PROMPTPET_COMPANION_STATE_FILE", custom)
+	if p := companion.DefaultStatePath(); p != custom {
+		t.Errorf("expected custom companion state path %q, got %q", custom, p)
+	}
+
+	// 2. Unset custom env var, set PROMPTPET_HOME -> should fallback to companion.json in PROMPTPET_HOME
+	t.Setenv("PROMPTPET_COMPANION_STATE_FILE", "")
+	t.Setenv("PROMPTPET_HOME", tmpDir)
+	expected := filepath.Join(tmpDir, "companion.json")
+	if p := companion.DefaultStatePath(); p != expected {
+		t.Errorf("expected default fallback path %q, got %q", expected, p)
 	}
 }

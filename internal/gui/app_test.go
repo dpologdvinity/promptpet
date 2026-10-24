@@ -16,7 +16,7 @@ import (
 func TestAppInitialization(t *testing.T) {
 	tmp := t.TempDir()
 	cfg := gui.Config{
-		StatePath: filepath.Join(tmp, "state.json"),
+		StatePath: filepath.Join(tmp, "companion.json"),
 		EventPath: filepath.Join(tmp, "events.jsonl"),
 	}
 	app, err := gui.NewApp(cfg)
@@ -35,7 +35,7 @@ func TestAppInitialization(t *testing.T) {
 func TestGracefulHeadlessCheck(t *testing.T) {
 	tmp := t.TempDir()
 	cfg := gui.Config{
-		StatePath: filepath.Join(tmp, "state.json"),
+		StatePath: filepath.Join(tmp, "companion.json"),
 		EventPath: filepath.Join(tmp, "events.jsonl"),
 	}
 	t.Setenv("PROMPTPET_HEADLESS", "1")
@@ -50,7 +50,7 @@ func TestGracefulHeadlessCheck(t *testing.T) {
 
 func TestPetCyclingAndStateSaving(t *testing.T) {
 	tmp := t.TempDir()
-	stateFile := filepath.Join(tmp, "state.json")
+	stateFile := filepath.Join(tmp, "companion.json")
 	cfg := gui.Config{
 		StatePath: stateFile,
 		EventPath: filepath.Join(tmp, "events.jsonl"),
@@ -124,7 +124,7 @@ func TestAppDrawAllPets(t *testing.T) {
 func TestAppUpdateRhythmAndWellness(t *testing.T) {
 	tmp := t.TempDir()
 	eventFile := filepath.Join(tmp, "events.jsonl")
-	stateFile := filepath.Join(tmp, "state.json")
+	stateFile := filepath.Join(tmp, "companion.json")
 	cfg := gui.Config{
 		StatePath: stateFile,
 		EventPath: eventFile,
@@ -157,7 +157,7 @@ func TestAppUpdateRhythmAndWellness(t *testing.T) {
 func TestAppUpdateMultipleTicksNoEventReprocessingOrWellnessClobber(t *testing.T) {
 	tmp := t.TempDir()
 	eventFile := filepath.Join(tmp, "events.jsonl")
-	stateFile := filepath.Join(tmp, "state.json")
+	stateFile := filepath.Join(tmp, "companion.json")
 	cfg := gui.Config{
 		StatePath: stateFile,
 		EventPath: eventFile,
@@ -213,7 +213,7 @@ func TestAppUpdateMultipleTicksNoEventReprocessingOrWellnessClobber(t *testing.T
 func TestAppMiniGameLauncherAndEsc(t *testing.T) {
 	tmp := t.TempDir()
 	cfg := gui.Config{
-		StatePath: filepath.Join(tmp, "state.json"),
+		StatePath: filepath.Join(tmp, "companion.json"),
 		EventPath: filepath.Join(tmp, "events.jsonl"),
 	}
 	app, err := gui.NewApp(cfg)
@@ -225,20 +225,29 @@ func TestAppMiniGameLauncherAndEsc(t *testing.T) {
 		t.Fatalf("expected activeGame to be nil initially")
 	}
 
-	// Launch game 1 (Catch)
+	// Initial idle TPS is 20
+	ebiten.SetTPS(20)
+
+	// Launch game 1 (Catch) -> switches to 60 TPS
 	app.LaunchGameByID(1)
 	if app.ActiveGame() == nil || app.ActiveGame().Name() != "Snack Catch" {
 		t.Fatalf("expected Snack Catch game active, got %v", app.ActiveGame())
+	}
+	if ebiten.TPS() != 60 {
+		t.Errorf("expected 60 TPS when mini-game starts, got %d", ebiten.TPS())
 	}
 
 	// Render frame while game active
 	screen := ebiten.NewImage(240, 340)
 	app.Draw(screen)
 
-	// Press Esc / ExitGame
+	// Press Esc / ExitGame -> throttles back to 20 TPS
 	app.ExitGame()
 	if app.ActiveGame() != nil {
 		t.Fatalf("expected activeGame to be nil after exit")
+	}
+	if ebiten.TPS() != 20 {
+		t.Errorf("expected 20 TPS after mini-game exit, got %d", ebiten.TPS())
 	}
 
 	// Launch game 2 (Leap)
@@ -306,7 +315,7 @@ func TestAppMiniGameLauncherAndEsc(t *testing.T) {
 
 func TestAppMiniGameWinAndLossLifecycle(t *testing.T) {
 	tmp := t.TempDir()
-	stateFile := filepath.Join(tmp, "state.json")
+	stateFile := filepath.Join(tmp, "companion.json")
 	cfg := gui.Config{
 		StatePath: stateFile,
 		EventPath: filepath.Join(tmp, "events.jsonl"),
@@ -320,6 +329,9 @@ func TestAppMiniGameWinAndLossLifecycle(t *testing.T) {
 
 	// Launch Look Away and simulate a win
 	app.LaunchGameByID(3)
+	if ebiten.TPS() != 60 {
+		t.Errorf("expected 60 TPS when game launches, got %d", ebiten.TPS())
+	}
 	lookAway, ok := app.ActiveGame().(interface{ SimulateRound(bool) })
 	if !ok {
 		t.Fatalf("active game does not implement SimulateRound")
@@ -339,6 +351,9 @@ func TestAppMiniGameWinAndLossLifecycle(t *testing.T) {
 	if app.ActiveGame() != nil {
 		t.Fatalf("expected game to be cleared after finish")
 	}
+	if ebiten.TPS() != 20 {
+		t.Errorf("expected 20 TPS after mini-game finishes, got %d", ebiten.TPS())
+	}
 	if app.Speech() != "You won!" {
 		t.Errorf("expected win speech 'You won!', got %q", app.Speech())
 	}
@@ -351,6 +366,9 @@ func TestAppMiniGameWinAndLossLifecycle(t *testing.T) {
 
 	// Test loss condition: launch game 3 again and lose
 	app.LaunchGameByID(3)
+	if ebiten.TPS() != 60 {
+		t.Errorf("expected 60 TPS during second game, got %d", ebiten.TPS())
+	}
 	lookAway2, ok := app.ActiveGame().(interface{ SimulateRound(bool) })
 	if !ok {
 		t.Fatalf("active game does not implement SimulateRound")
@@ -366,11 +384,103 @@ func TestAppMiniGameWinAndLossLifecycle(t *testing.T) {
 	if app.ActiveGame() != nil {
 		t.Fatalf("expected game to be cleared after finish")
 	}
+	if ebiten.TPS() != 20 {
+		t.Errorf("expected 20 TPS after loss finish, got %d", ebiten.TPS())
+	}
 	if app.Speech() != "Good try!" {
 		t.Errorf("expected loss speech 'Good try!', got %q", app.Speech())
 	}
 	// Hearts should not increment
 	if app.State().FriendshipHearts != initialHearts+1 {
 		t.Errorf("hearts should remain unchanged on loss, got %d", app.State().FriendshipHearts)
+	}
+}
+
+func TestAppGitMilestoneSpeech(t *testing.T) {
+	tmp := t.TempDir()
+	eventFile := filepath.Join(tmp, "events.jsonl")
+	stateFile := filepath.Join(tmp, "companion.json")
+	cfg := gui.Config{
+		StatePath: stateFile,
+		EventPath: eventFile,
+	}
+	app, err := gui.NewApp(cfg)
+	if err != nil {
+		t.Fatalf("failed to create app: %v", err)
+	}
+
+	// Append 5th commit event
+	err = event.AppendEventToFile(eventFile, event.Event{
+		Timestamp:   time.Now().Unix(),
+		Type:        "command_finish",
+		ExitCode:    0,
+		GitAction:   "commit",
+		CommitCount: 5,
+	})
+	if err != nil {
+		t.Fatalf("failed to append event: %v", err)
+	}
+
+	if err := app.Update(); err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+
+	if app.Speech() != "5th commit! Amazing progress!" {
+		t.Errorf("expected '5th commit! Amazing progress!', got %q", app.Speech())
+	}
+}
+
+func TestAppLastEventOffsetIncremental(t *testing.T) {
+	tmp := t.TempDir()
+	eventFile := filepath.Join(tmp, "events.jsonl")
+	stateFile := filepath.Join(tmp, "companion.json")
+
+	// Pre-create file with 1 event before App starts
+	err := event.AppendEventToFile(eventFile, event.Event{
+		Timestamp: time.Now().Add(-10 * time.Minute).Unix(),
+		Type:      "command_finish",
+		ExitCode:  0,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Starting App: by default it seeks to the end of the file
+	cfg := gui.Config{
+		StatePath: stateFile,
+		EventPath: eventFile,
+	}
+	app, err := gui.NewApp(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	initialOffset := app.LastEventOffset()
+	if initialOffset <= 0 {
+		t.Fatalf("expected initial offset to seek to end of existing file, got %d", initialOffset)
+	}
+
+	// Append new commit event
+	err = event.AppendEventToFile(eventFile, event.Event{
+		Timestamp:   time.Now().Unix(),
+		Type:        "command_finish",
+		ExitCode:    0,
+		GitAction:   "commit",
+		CommitCount: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := app.Update(); err != nil {
+		t.Fatal(err)
+	}
+
+	newOffset := app.LastEventOffset()
+	if newOffset <= initialOffset {
+		t.Fatalf("expected offset to advance past %d, got %d", initialOffset, newOffset)
+	}
+	if app.Speech() != "Commit pushed! High five!" {
+		t.Errorf("expected 'Commit pushed! High five!', got %q", app.Speech())
 	}
 }

@@ -1,6 +1,7 @@
 package companion
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dpologdvinity/promptpet/internal/event"
@@ -131,6 +132,22 @@ func (s *State) EvaluateRhythm(events []event.Event, now time.Time) (RhythmMood,
 	// If the latest event errored, prioritize sympathy
 	if latestEvent.ExitCode != 0 {
 		return MoodSympathy, "You got this! Here's some tea"
+	}
+
+	// Git milestone detection: check latest event or recent events in batch
+	for i := len(events) - 1; i >= 0; i-- {
+		ev := events[i]
+		if ev.ExitCode == 0 {
+			if ev.GitAction == "commit" {
+				if ev.CommitCount > 0 && ev.CommitCount%5 == 0 {
+					return MoodCheer, fmt.Sprintf("%dth commit! Amazing progress!", ev.CommitCount)
+				}
+				return MoodCheer, "Commit pushed! High five!"
+			}
+			if ev.CommitCount > 0 && ev.CommitCount%5 == 0 {
+				return MoodCheer, fmt.Sprintf("%dth commit! Amazing progress!", ev.CommitCount)
+			}
+		}
 	}
 
 	// Command bursts (>= 3 in 2 mins) -> energetic
