@@ -2,11 +2,14 @@ package cli
 
 import (
 	"fmt"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	"github.com/dpologdvinity/promptpet/internal/event"
 	"github.com/dpologdvinity/promptpet/internal/pet"
 	"github.com/dpologdvinity/promptpet/internal/repo"
 	"github.com/dpologdvinity/promptpet/internal/store"
-	"strconv"
-	"time"
 )
 
 func runPrompt(args []string, d Deps) int {
@@ -52,6 +55,21 @@ func runPrompt(args []string, d Deps) int {
 	s.EventOffset = off
 	if exit >= 0 {
 		pet.ApplyExit(s, exit)
+		ev := event.Event{
+			Type:      "command_finish",
+			ExitCode:  exit,
+			Timestamp: time.Now().Unix(),
+		}
+		if d.Now != nil {
+			ev.Timestamp = d.Now().Unix()
+		}
+		if d.Getenv != nil && d.Getenv("PROMPTPET_EVENT_FILE") != "" {
+			_ = event.AppendEventToFile(d.Getenv("PROMPTPET_EVENT_FILE"), ev)
+		} else if d.Getenv != nil && d.Getenv("PROMPTPET_HOME") != "" {
+			_ = event.AppendEventToFile(filepath.Join(d.Getenv("PROMPTPET_HOME"), "events.jsonl"), ev)
+		} else {
+			_ = event.LogEvent(ev)
+		}
 	}
 	mood := pet.MoodOf(s, pet.MoodInput{Now: now, PrevPrompt: prev, Exit: exit, Ate: n > 0})
 	s.LastPrompt = now

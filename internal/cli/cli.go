@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/dpologdvinity/promptpet/internal/feed"
+	"github.com/dpologdvinity/promptpet/internal/gui"
 	"github.com/dpologdvinity/promptpet/internal/hooks"
 	"github.com/dpologdvinity/promptpet/internal/pet"
 	"github.com/dpologdvinity/promptpet/internal/store"
@@ -25,11 +26,22 @@ type Deps struct {
 	Spawn   func(string) error
 	Stdout  io.Writer
 	Stderr  io.Writer
+	RunGUI  func(gui.Config) error
 }
 
 func RealDeps(version string) Deps {
 	seed := uint64(time.Now().UnixNano())
-	return Deps{version, time.Now, rand.New(rand.NewPCG(seed, seed+1)), os.Getenv, os.Getwd, realSpawn, os.Stdout, os.Stderr}
+	return Deps{
+		Version: version,
+		Now:     time.Now,
+		Rand:    rand.New(rand.NewPCG(seed, seed+1)),
+		Getenv:  os.Getenv,
+		Getwd:   os.Getwd,
+		Spawn:   realSpawn,
+		Stdout:  os.Stdout,
+		Stderr:  os.Stderr,
+		RunGUI:  gui.Run,
+	}
 }
 func realSpawn(worktree string) error {
 	exe, err := os.Executable()
@@ -50,7 +62,9 @@ usage:
   promptpet                  show your pet
   promptpet init <shell>     print the shell hook (zsh, bash, fish)
   promptpet completion <sh>  print shell completions (zsh, bash, fish)
-  promptpet pet              pet your pet
+  promptpet gui              launch companion mini-window
+  promptpet pet [name]       select or list companion pets
+  promptpet games            list mini-games and high scores
   promptpet play             play with your pet
   promptpet name <name>      rename your pet
   promptpet species <kind>   change species (cat, dragon, blob)
@@ -99,7 +113,45 @@ func withState(d Deps, fn func(*pet.State, bool) string) int {
 	fmt.Fprint(d.Stdout, output)
 	return 0
 }
-func Run(args []string, d Deps) int {
+func Run(args []string, extra ...any) int {
+	var d Deps
+	if len(extra) == 1 {
+		if dep, ok := extra[0].(Deps); ok {
+			d = dep
+		}
+	} else if len(extra) >= 2 {
+		if out, ok1 := extra[0].(io.Writer); ok1 {
+			if errOut, ok2 := extra[1].(io.Writer); ok2 {
+				d = RealDeps("dev")
+				d.Stdout = out
+				d.Stderr = errOut
+			}
+		}
+	}
+	if d.Now == nil {
+		d.Now = time.Now
+	}
+	if d.Getenv == nil {
+		d.Getenv = os.Getenv
+	}
+	if d.Stdout == nil {
+		d.Stdout = os.Stdout
+	}
+	if d.Stderr == nil {
+		d.Stderr = os.Stderr
+	}
+	if d.RunGUI == nil {
+		d.RunGUI = gui.Run
+	}
+	if d.Rand == nil {
+		d.Rand = rand.New(rand.NewPCG(1, 2))
+	}
+	if d.Getwd == nil {
+		d.Getwd = os.Getwd
+	}
+	if d.Spawn == nil {
+		d.Spawn = realSpawn
+	}
 	if len(args) == 0 {
 		return withState(d, func(s *pet.State, ate bool) string {
 			mood := pet.MoodOf(s, pet.MoodInput{Now: d.Now(), PrevPrompt: s.LastPrompt, Exit: -1, Ate: ate})
@@ -172,11 +224,12 @@ func Run(args []string, d Deps) int {
 			s.Species = args[1]
 			return fmt.Sprintf("%s is now a %s.\n", s.Name, s.Species)
 		})
+	case "gui":
+		return runGUI(args[1:], d)
+	case "games":
+		return runGames(args[1:], d)
 	case "pet":
-		if len(args) != 1 {
-			return usageError(d, "usage: promptpet pet")
-		}
-		return withState(d, func(s *pet.State, _ bool) string { return strings.Join(pet.PetIt(s, d.Rand), "\n") + "\n" })
+		return runPet(args[1:], d)
 	case "play":
 		if len(args) != 1 {
 			return usageError(d, "usage: promptpet play")

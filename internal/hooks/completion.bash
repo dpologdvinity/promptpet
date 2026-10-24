@@ -1,12 +1,13 @@
 # bash completion for promptpet
 _promptpet_completions() {
-  local cur prev commands shells species
+  local cur prev commands shells species pets
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  commands="init pet play name species prompt completion --version --help"
+  commands="init pet play name species prompt completion gui games --version --help"
   shells="zsh bash fish"
   species="cat dragon blob"
+  pets="usagi kochi puff mochi spook pippin gromit boba"
 
   case "$prev" in
     init|completion)
@@ -15,6 +16,10 @@ _promptpet_completions() {
       ;;
     species)
       COMPREPLY=( $(compgen -W "$species" -- "$cur") )
+      return 0
+      ;;
+    pet)
+      COMPREPLY=( $(compgen -W "$pets" -- "$cur") )
       return 0
       ;;
     prompt)

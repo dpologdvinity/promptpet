@@ -1,20 +1,23 @@
 #compdef promptpet
 
 _promptpet() {
-  local -a commands shells species
+  local -a commands shells species pets
   commands=(
     'init:print the shell hook'
-    'pet:pet your pet'
+    'pet:select or list pets'
     'play:play with your pet'
     'name:rename your pet'
     'species:change species'
     'prompt:print the prompt segment'
     'completion:generate shell autocompletions'
+    'gui:launch companion mini-window'
+    'games:list mini-games and high scores'
     '--version:print version'
     '--help:show help'
   )
   shells=(zsh bash fish)
   species=(cat dragon blob)
+  pets=(usagi kochi puff mochi spook pippin gromit boba)
 
   _arguments -C \
     '1: :->command' \
@@ -32,6 +35,9 @@ _promptpet() {
           ;;
         species)
           _values 'species' $species
+          ;;
+        pet)
+          _values 'pet' $pets
           ;;
         prompt)
           _arguments '--exit[exit code of last command]:exit code:'

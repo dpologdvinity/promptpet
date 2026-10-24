@@ -76,8 +76,8 @@ func TestInteractions(t *testing.T) {
 		t.Fatal(out)
 	}
 	out.Reset()
-	Run([]string{"pet"}, d)
-	if out.String() != "Mochi wobbles contentedly.\n" {
+	Run([]string{"play"}, d)
+	if !strings.Contains(out.String(), "Mochi chases the") {
 		t.Fatal(out)
 	}
 	if Run([]string{"species", "dog"}, d) != 2 || errb.String() != "promptpet: unknown species \"dog\" (choose cat, dragon or blob)\n" {
@@ -101,7 +101,7 @@ func TestCardShowsMessageOnce(t *testing.T) {
 	unlock, _ := store.Lock(dir, "state.lock", time.Second)
 	store.SaveState(dir, s)
 	unlock()
-	Run([]string{"pet"}, d)
+	Run([]string{"play"}, d)
 	out.Reset()
 	Run(nil, d)
 	if !strings.Contains(out.String(), "came back from an adventure") {

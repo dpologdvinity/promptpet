@@ -1,10 +1,13 @@
 package main
 
 import (
-	"github.com/dpologdvinity/promptpet/internal/cli"
 	"os"
+
+	"github.com/dpologdvinity/promptpet/internal/cli"
 )
 
 var version = "dev"
 
-func main() { os.Exit(cli.Run(os.Args[1:], cli.RealDeps(version))) }
+func main() {
+	os.Exit(cli.Run(os.Args[1:], cli.RealDeps(version)))
+}
