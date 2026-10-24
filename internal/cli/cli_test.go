@@ -8,6 +8,18 @@ import (
 	"time"
 )
 
+var spawnCalls = map[string][]string{}
+
+func spawned(d Deps) []string { return spawnCalls[d.Getenv("PROMPTPET_HOME")] }
+func withEnv(getenv func(string) string, k, v string) func(string) string {
+	return func(x string) string {
+		if x == k {
+			return v
+		}
+		return getenv(x)
+	}
+}
+
 var t0 = time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
 
 func testDeps(t *testing.T) (Deps, *bytes.Buffer, *bytes.Buffer) {
@@ -19,7 +31,7 @@ func testDeps(t *testing.T) (Deps, *bytes.Buffer, *bytes.Buffer) {
 			return home
 		}
 		return ""
-	}, Getwd: func() (string, error) { return cwd, nil }, Spawn: func(string) error { return nil }, Stdout: out, Stderr: errb}
+	}, Getwd: func() (string, error) { return cwd, nil }, Spawn: func(wt string) error { spawnCalls[home] = append(spawnCalls[home], wt); return nil }, Stdout: out, Stderr: errb}
 	return d, out, errb
 }
 func TestVersion(t *testing.T) {

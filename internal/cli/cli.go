@@ -57,6 +57,9 @@ Setup (fish): add  promptpet init fish | source  to ~/.config/fish/config.fish
 `
 
 func Run(args []string, d Deps) int {
+	if len(args) > 0 && args[0] == "prompt" {
+		return runPrompt(args[1:], d)
+	}
 	if len(args) == 1 {
 		switch args[0] {
 		case "--version", "-V":
