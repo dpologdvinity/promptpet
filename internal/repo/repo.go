@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"bufio"
 	"github.com/dpologdvinity/promptpet/internal/pet"
 	"os"
 	"path/filepath"
@@ -68,15 +69,14 @@ func GetInfo(gitDir string) Info {
 		}
 	}
 
-	logsData, err := os.ReadFile(filepath.Join(gitDir, "logs", "HEAD"))
+	f, err := os.Open(filepath.Join(gitDir, "logs", "HEAD"))
 	if err == nil {
-		lines := strings.Split(strings.TrimSpace(string(logsData)), "\n")
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
 		commits := 0
 		var lastAction string
-		for _, line := range lines {
-			if line == "" {
-				continue
-			}
+		for scanner.Scan() {
+			line := scanner.Text()
 			parts := strings.SplitN(line, "\t", 2)
 			if len(parts) == 2 {
 				actionMsg := parts[1]

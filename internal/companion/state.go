@@ -3,7 +3,6 @@ package companion
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -92,13 +91,5 @@ func SaveState(path string, s *State) error {
 		return err
 	}
 
-	tmp := fmt.Sprintf("%s.tmp-%d", path, os.Getpid())
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
-		return err
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	return nil
+	return store.WriteAtomic(path, data)
 }

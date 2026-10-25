@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dpologdvinity/promptpet/internal/event"
@@ -17,9 +18,15 @@ func runPrompt(args []string, d Deps) int {
 		return 0
 	}
 	exit := -1
-	for i := 0; i+1 < len(args); i++ {
-		if args[i] == "--exit" {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--exit" && i+1 < len(args) {
 			if n, err := strconv.Atoi(args[i+1]); err == nil {
+				exit = n
+			}
+			break
+		}
+		if strings.HasPrefix(args[i], "--exit=") {
+			if n, err := strconv.Atoi(strings.TrimPrefix(args[i], "--exit=")); err == nil {
 				exit = n
 			}
 			break
@@ -65,10 +72,10 @@ func runPrompt(args []string, d Deps) int {
 			foundRepo = true
 			repoWt = wt
 			repoGd = gd
-			info := repo.GetInfo(gd)
-			gitBranch = info.Branch
-			commitCount = info.CommitCount
 			if sig, ok := repo.Sig(gd); ok && sig != s.Repo {
+				info := repo.GetInfo(gd)
+				gitBranch = info.Branch
+				commitCount = info.CommitCount
 				if info.LastAction == "commit" {
 					gitAction = "commit"
 				}
@@ -89,13 +96,11 @@ func runPrompt(args []string, d Deps) int {
 		if d.Now != nil {
 			ev.Timestamp = d.Now().Unix()
 		}
+		evFile := filepath.Join(dir, "events.jsonl")
 		if d.Getenv != nil && d.Getenv("PROMPTPET_EVENT_FILE") != "" {
-			_ = event.AppendEventToFile(d.Getenv("PROMPTPET_EVENT_FILE"), ev)
-		} else if d.Getenv != nil && d.Getenv("PROMPTPET_HOME") != "" {
-			_ = event.AppendEventToFile(filepath.Join(d.Getenv("PROMPTPET_HOME"), "events.jsonl"), ev)
-		} else {
-			_ = event.LogEvent(ev)
+			evFile = d.Getenv("PROMPTPET_EVENT_FILE")
 		}
+		_ = event.AppendEventToFile(evFile, ev)
 	}
 	mood := pet.MoodOf(s, pet.MoodInput{Now: now, PrevPrompt: prev, Exit: exit, Ate: n > 0})
 	s.LastPrompt = now

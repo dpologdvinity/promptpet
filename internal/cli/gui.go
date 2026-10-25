@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
 	"github.com/dpologdvinity/promptpet/internal/event"
 	"github.com/dpologdvinity/promptpet/internal/gui"
+	"github.com/dpologdvinity/promptpet/internal/pet"
 	"github.com/dpologdvinity/promptpet/internal/store"
 )
 
@@ -60,16 +62,26 @@ func runGUI(args []string, d Deps) int {
 
 func runPet(args []string, d Deps) int {
 	if len(args) == 0 {
-		return runPetList(d)
+		return withState(d, func(s *pet.State, _ bool) string {
+			return strings.Join(pet.PetIt(s, d.Rand), "\n") + "\n"
+		})
 	}
 	if len(args) == 1 {
+		if args[0] == "list" {
+			return runPetList(d)
+		}
 		return runPetSwitch(args[0], d)
 	}
-	return usageError(d, "usage: promptpet pet [name]")
+	return usageError(d, "usage: promptpet pet [name|list]")
 }
 
 func runPetList(d Deps) int {
 	sp := statePath(d)
+	dir := filepath.Dir(sp)
+	unlock, lockErr := store.Lock(dir, "companion.lock", 200*time.Millisecond)
+	if lockErr == nil {
+		defer unlock()
+	}
 	s, err := companion.LoadState(sp)
 	if err != nil {
 		s = companion.NewDefaultState()
@@ -107,6 +119,11 @@ func runPetSwitch(name string, d Deps) int {
 	}
 
 	sp := statePath(d)
+	dir := filepath.Dir(sp)
+	unlock, lockErr := store.Lock(dir, "companion.lock", 200*time.Millisecond)
+	if lockErr == nil {
+		defer unlock()
+	}
 	s, err := companion.LoadState(sp)
 	if err != nil {
 		s = companion.NewDefaultState()
@@ -139,6 +156,11 @@ var allGameInfos = []gameInfo{
 
 func runGames(args []string, d Deps) int {
 	sp := statePath(d)
+	dir := filepath.Dir(sp)
+	unlock, lockErr := store.Lock(dir, "companion.lock", 200*time.Millisecond)
+	if lockErr == nil {
+		defer unlock()
+	}
 	s, err := companion.LoadState(sp)
 	if err != nil {
 		s = companion.NewDefaultState()

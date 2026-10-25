@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/dpologdvinity/promptpet/internal/companion"
 	"github.com/dpologdvinity/promptpet/internal/feed"
 	"github.com/dpologdvinity/promptpet/internal/gui"
 	"github.com/dpologdvinity/promptpet/internal/hooks"
@@ -60,10 +61,11 @@ const usage = `promptpet - a tiny pet that lives in your shell prompt
 
 usage:
   promptpet                  show your pet
+  promptpet status           show pet status and companion info
+  promptpet pet [name|list]  pet your pet, switch, or list companion pets
   promptpet init <shell>     print the shell hook (zsh, bash, fish)
   promptpet completion <sh>  print shell completions (zsh, bash, fish)
   promptpet gui              launch companion mini-window
-  promptpet pet [name]       select or list companion pets
   promptpet games            list mini-games and high scores
   promptpet play             play with your pet
   promptpet name <name>      rename your pet
@@ -223,6 +225,17 @@ func Run(args []string, extra ...any) int {
 		return withState(d, func(s *pet.State, _ bool) string {
 			s.Species = args[1]
 			return fmt.Sprintf("%s is now a %s.\n", s.Name, s.Species)
+		})
+	case "status":
+		return withState(d, func(s *pet.State, ate bool) string {
+			mood := pet.MoodOf(s, pet.MoodInput{Now: d.Now(), PrevPrompt: s.LastPrompt, Exit: -1, Ate: ate})
+			card := pet.Card(s, mood, d.Now())
+			sp := statePath(d)
+			if cs, err := companion.LoadState(sp); err == nil && cs.ActivePet != "" {
+				card += fmt.Sprintf("\nCompanion: %s (Hearts: %d)\n", cs.ActivePet, cs.FriendshipHearts)
+			}
+			s.Message = ""
+			return card
 		})
 	case "gui":
 		return runGUI(args[1:], d)

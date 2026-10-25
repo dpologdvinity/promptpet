@@ -4,10 +4,10 @@ _promptpet_completions() {
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  commands="init pet play name species prompt completion gui games --version --help"
+  commands="init status pet play name species prompt completion gui games --version --help"
   shells="zsh bash fish"
   species="cat dragon blob"
-  pets="usagi kochi puff mochi spook pippin gromit boba"
+  pets="list usagi kochi puff mochi spook pippin gromit boba"
 
   case "$prev" in
     init|completion)

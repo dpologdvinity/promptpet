@@ -320,17 +320,7 @@ func (a *App) Update() error {
 		}
 	}
 
-	sleepDuration := time.Duration(0)
-	if a.idleThrottled && a.throttleSleep > 0 {
-		sleepDuration = a.throttleSleep
-	}
 	a.mu.Unlock()
-
-	// 5. Frame rate sleep throttling outside mutex lock to avoid blocking readers
-	if sleepDuration > 0 {
-		time.Sleep(sleepDuration)
-	}
-
 	return nil
 }
 

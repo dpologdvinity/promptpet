@@ -60,7 +60,7 @@ func TestPetListCommand(t *testing.T) {
 	}
 
 	var out, errOut bytes.Buffer
-	code := cli.Run([]string{"pet"}, &out, &errOut)
+	code := cli.Run([]string{"pet", "list"}, &out, &errOut)
 	if code != 0 {
 		t.Fatalf("expected 0 exit code, got %d: %s", code, errOut.String())
 	}
@@ -75,6 +75,16 @@ func TestPetListCommand(t *testing.T) {
 	// Should highlight active pet (boba)
 	if !strings.Contains(output, "*") || !strings.Contains(output, "boba") {
 		t.Errorf("expected active pet boba to be highlighted, got:\n%s", output)
+	}
+
+	// Calling `promptpet pet` without arguments pets the shell pet
+	out.Reset()
+	code = cli.Run([]string{"pet"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("expected 0 exit code for petting, got %d: %s", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "purrs") && !strings.Contains(out.String(), "rubs") {
+		t.Errorf("expected pet reaction output, got: %s", out.String())
 	}
 }
 
@@ -307,5 +317,40 @@ func TestPromptLoggingEventGitMilestone(t *testing.T) {
 	}
 	if ev.CommitCount != 5 {
 		t.Errorf("expected CommitCount 5, got %d", ev.CommitCount)
+	}
+}
+
+func TestStatusCommand(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("PROMPTPET_HOME", tmpDir)
+
+	var out, errOut bytes.Buffer
+	code := cli.Run([]string{"status"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("expected 0 exit code, got %d: %s", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "Pip") {
+		t.Errorf("expected output to contain pet name Pip, got: %s", out.String())
+	}
+}
+
+func TestPromptExitEqualSyntax(t *testing.T) {
+	tmpDir := t.TempDir()
+	evFile := filepath.Join(tmpDir, "events.jsonl")
+	t.Setenv("PROMPTPET_HOME", tmpDir)
+	t.Setenv("PROMPTPET_EVENT_FILE", evFile)
+
+	var out, errOut bytes.Buffer
+	code := cli.Run([]string{"prompt", "--exit=42"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("expected 0 exit code, got %d: %s", code, errOut.String())
+	}
+
+	events, err := event.ReadEventsSince(evFile, 0)
+	if err != nil || len(events) != 1 {
+		t.Fatalf("expected 1 logged event, got %d (err: %v)", len(events), err)
+	}
+	if events[0].ExitCode != 42 {
+		t.Errorf("expected exit code 42, got %d", events[0].ExitCode)
 	}
 }

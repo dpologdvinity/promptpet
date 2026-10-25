@@ -4,7 +4,8 @@ _promptpet() {
   local -a commands shells species pets
   commands=(
     'init:print the shell hook'
-    'pet:select or list pets'
+    'status:show pet status and companion info'
+    'pet:pet your pet, switch, or list companion pets'
     'play:play with your pet'
     'name:rename your pet'
     'species:change species'
@@ -17,7 +18,7 @@ _promptpet() {
   )
   shells=(zsh bash fish)
   species=(cat dragon blob)
-  pets=(usagi kochi puff mochi spook pippin gromit boba)
+  pets=(list usagi kochi puff mochi spook pippin gromit boba)
 
   _arguments -C \
     '1: :->command' \
