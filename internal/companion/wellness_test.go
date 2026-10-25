@@ -101,10 +101,10 @@ func TestRhythmEvaluationVariants(t *testing.T) {
 	}
 
 	// Long silence (> 5m) -> Resting with time of day
-	oldEvents := []event.Event{
-		{Timestamp: now.Add(-10 * time.Minute).Unix(), ExitCode: 0, Type: "command_finish"},
-	}
 	morning := time.Date(2026, 10, 24, 8, 30, 0, 0, time.Local)
+	oldEvents := []event.Event{
+		{Timestamp: morning.Add(-10 * time.Minute).Unix(), ExitCode: 0, Type: "command_finish"},
+	}
 	moodRest, speechMorning := s.EvaluateRhythm(oldEvents, morning)
 	if moodRest != companion.MoodResting {
 		t.Errorf("expected MoodResting for long silence, got %v", moodRest)
