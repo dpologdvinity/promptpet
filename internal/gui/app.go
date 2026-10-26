@@ -14,6 +14,7 @@ import (
 	"github.com/dpologdvinity/promptpet/internal/companion"
 	"github.com/dpologdvinity/promptpet/internal/event"
 	"github.com/dpologdvinity/promptpet/internal/gui/games"
+	"github.com/dpologdvinity/promptpet/internal/gui/sound"
 )
 
 // ErrHeadless is returned when attempting to run the GUI in an environment without a display server.
@@ -138,6 +139,7 @@ func (a *App) cyclePetLocked() {
 	if len(a.pets) == 0 {
 		return
 	}
+	sound.PlayBlip()
 	a.petIndex = (a.petIndex + 1) % len(a.pets)
 	a.activePet = a.pets[a.petIndex]
 	a.state.ActivePet = string(a.activePet.ID)
@@ -193,12 +195,14 @@ func (a *App) launchGameLocked(id int) {
 	default:
 		return
 	}
+	sound.PlayBlip()
 	g.Init(a.activePet)
 	a.activeGame = g
 	ebiten.SetTPS(60)
 }
 
 func (a *App) exitGameLocked() {
+	sound.PlayBlip()
 	a.activeGame = nil
 	ebiten.SetTPS(20)
 }
@@ -209,9 +213,11 @@ func (a *App) finishGameLocked(won bool, score int) {
 	}
 	gameName := a.activeGame.Name()
 	if won {
+		sound.PlaySuccess()
 		a.state.FriendshipHearts++
 		a.speech = "You won!"
 	} else {
+		sound.PlayMiss()
 		a.speech = "Good try!"
 	}
 
@@ -288,6 +294,17 @@ func (a *App) Update() error {
 	// Tab key cycles active pet
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		a.cyclePetLocked()
+	}
+
+	// M key toggles sound mute
+	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
+		muted := sound.ToggleMute()
+		if muted {
+			a.speech = "(sound muted)"
+		} else {
+			a.speech = "(sound on)"
+			sound.PlayBlip()
+		}
 	}
 
 	now := time.Now()

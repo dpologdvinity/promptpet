@@ -234,3 +234,70 @@ func TestReadEventsFromOffset_CorruptLines(t *testing.T) {
 		t.Fatalf("expected offset %d, got %d", len(content), off)
 	}
 }
+
+func TestAppendEventToFile_Rotation(t *testing.T) {
+	origMax := event.MaxEventFileSize
+	defer func() { event.MaxEventFileSize = origMax }()
+
+	tmpDir := t.TempDir()
+	evFile := filepath.Join(tmpDir, "events.jsonl")
+
+	// Set small max file size for testing (each serialized event is ~73 bytes)
+	event.MaxEventFileSize = 100
+
+	// 1. Append first event
+	ev1 := event.Event{Timestamp: 100, Type: "command_finish", ExitCode: 0}
+	if err := event.AppendEventToFile(evFile, ev1); err != nil {
+		t.Fatalf("first append failed: %v", err)
+	}
+
+	// 2. Read events to establish initial offset
+	events1, off1, err := event.ReadEventsFromOffset(evFile, 0)
+	if err != nil || len(events1) != 1 {
+		t.Fatalf("read 1 failed: %v, len: %d", err, len(events1))
+	}
+
+	// 3. Append second event (still within threshold)
+	ev2 := event.Event{Timestamp: 200, Type: "command_finish", ExitCode: 0}
+	if err := event.AppendEventToFile(evFile, ev2); err != nil {
+		t.Fatalf("second append failed: %v", err)
+	}
+
+	events2, off2, err := event.ReadEventsFromOffset(evFile, off1)
+	if err != nil || len(events2) != 1 {
+		t.Fatalf("read 2 failed: %v, len: %d", err, len(events2))
+	}
+
+	// 4. Append third event: file size >= 150 bytes, should rotate to evFile.1
+	ev3 := event.Event{Timestamp: 300, Type: "command_finish", ExitCode: 0}
+	if err := event.AppendEventToFile(evFile, ev3); err != nil {
+		t.Fatalf("third append failed: %v", err)
+	}
+
+	// Verify backup file exists
+	backupFile := evFile + ".1"
+	if fi, err := os.Stat(backupFile); err != nil || fi.Size() == 0 {
+		t.Fatalf("expected rotated backup file %s to exist, err: %v", backupFile, err)
+	}
+
+	// Verify new evFile has only ev3
+	fi, err := os.Stat(evFile)
+	if err != nil {
+		t.Fatalf("stat new file failed: %v", err)
+	}
+	if fi.Size() >= 150 {
+		t.Fatalf("expected new file to be small, got size %d", fi.Size())
+	}
+
+	// 5. Verify ReadEventsFromOffset from off2 (which is > new file size) resets and reads ev3
+	events3, off3, err := event.ReadEventsFromOffset(evFile, off2)
+	if err != nil {
+		t.Fatalf("read from old offset failed: %v", err)
+	}
+	if len(events3) != 1 || events3[0].Timestamp != 300 {
+		t.Fatalf("expected 1 event with timestamp 300 after reset, got %+v", events3)
+	}
+	if off3 >= off2 {
+		t.Fatalf("expected offset to reset lower than old %d, got %d", off2, off3)
+	}
+}

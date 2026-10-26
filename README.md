@@ -91,6 +91,7 @@ The companion window brings your shell pet to life in a dedicated retro virtual 
 - **Mini-Window Controls:**
   - `Tab`: Cycle through the 8 companion pets.
   - `1` – `8`: Launch one of the 8 keyboard mini-games directly.
+  - `M`: Toggle retro 8-bit sound blips on/off.
   - `Esc`: Exit the current mini-game back to companion mode.
 
 ---
@@ -100,7 +101,7 @@ The companion window brings your shell pet to life in a dedicated retro virtual 
 `promptpet` is architected so that the shell prompt and GUI window coexist seamlessly with zero interference:
 
 - **Guaranteed Fast Prompt Latency (<5 ms):** The shell prompt path only appends a small event record (`command_finish`, exit code, timestamp) to `events.jsonl`. It never waits on GUI locks or blocks terminal execution. Benchmarks confirm prompt execution averages ~1.2 ms/op.
-- **Asynchronous Event IPC:** The GUI process polls `events.jsonl` once per second (`1 Hz`), maintaining an incremental byte offset cursor. It seeks and streams new terminal events without file contention.
+- **Asynchronous Event IPC:** The GUI process polls `events.jsonl` once per second (`1 Hz`), maintaining an incremental byte offset cursor. It seeks and streams new terminal events without file contention. The event log automatically rotates at 2 MB to prevent unbounded disk growth.
 - **Independent State Isolation:** Prompt vitals and feeding live in `state.json`, while companion pet preferences, wellness timestamps, and mini-game high scores reside in `companion.json`.
 - **Headless Detection:** If launched without an active X11, Wayland, or desktop display server, `promptpet gui` exits cleanly with a helpful error message instead of crashing.
 
@@ -202,6 +203,7 @@ promptpet --version        print current version
 - `PROMPTPET_EVENT_FILE`: Overrides the event stream file path (defaults to `$PROMPTPET_HOME/events.jsonl`).
 - `PROMPTPET_DISABLE`: Set to any non-empty value to temporarily disable prompt segment rendering.
 - `PROMPTPET_HEADLESS`: Set to `1` to simulate a headless environment without display.
+- `PROMPTPET_SOUND`: Set to `0` to disable retro audio sound effects.
 - `PROMPTPET_SEGMENT`: Populated in `zsh` and `bash` hooks for manual placement in custom prompt themes.
 
 ---

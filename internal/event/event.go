@@ -23,6 +23,12 @@ type Event struct {
 	CommitCount int    `json:"commit_count,omitempty"`
 }
 
+// DefaultMaxEventFileSize caps the event stream log at 2 MB to prevent unbounded disk growth.
+const DefaultMaxEventFileSize int64 = 2 * 1024 * 1024
+
+// MaxEventFileSize can be adjusted for testing.
+var MaxEventFileSize = DefaultMaxEventFileSize
+
 func GetEventFilePath() string {
 	if f := os.Getenv("PROMPTPET_EVENT_FILE"); f != "" {
 		return f
@@ -50,6 +56,15 @@ func AppendEventToFile(filePath string, ev Event) error {
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
+	}
+
+	if fi, statErr := f.Stat(); statErr == nil && MaxEventFileSize > 0 && fi.Size() >= MaxEventFileSize {
+		_ = f.Close()
+		_ = os.Rename(filePath, filePath+".1")
+		f, err = os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+		if err != nil {
+			return err
+		}
 	}
 	defer f.Close()
 

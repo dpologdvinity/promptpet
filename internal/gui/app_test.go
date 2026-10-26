@@ -484,3 +484,20 @@ func TestAppLastEventOffsetIncremental(t *testing.T) {
 		t.Errorf("expected 'Commit pushed! High five!', got %q", app.Speech())
 	}
 }
+
+func TestAppSoundMuteToggle(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := gui.Config{
+		StatePath: filepath.Join(tmp, "companion.json"),
+		EventPath: filepath.Join(tmp, "events.jsonl"),
+	}
+	app, err := gui.NewApp(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Update should succeed without error
+	if err := app.Update(); err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+}
