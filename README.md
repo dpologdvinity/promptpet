@@ -86,13 +86,12 @@ This opens a pocket-sized (240×340) retro handheld LCD console displaying your 
 
 The companion window brings your shell pet to life in a dedicated retro virtual device:
 
-- **Ultra-Lightweight & Smooth:** Handcrafted vector art rendered via Ebitengine. Throttles to 5 FPS / ~1% CPU when idle; runs at 20 FPS during gameplay.
+- **Ultra-Lightweight & Smooth:** Handcrafted vector art rendered via Ebitengine. Runs at 20 TPS / ~1% CPU when idle; switches to 60 TPS during mini-gameplay for fluid responsiveness.
 - **Real-Time Shell Awareness:** Reacts to shell successes, command errors, and work velocity via asynchronous event IPC.
 - **Mini-Window Controls:**
   - `Tab`: Cycle through the 8 companion pets.
   - `1` – `8`: Launch one of the 8 keyboard mini-games directly.
   - `Esc`: Exit the current mini-game back to companion mode.
-  - Mouse: Click handheld buttons (A: cycle pet, B: action / play, C: back).
 
 ---
 
@@ -101,7 +100,7 @@ The companion window brings your shell pet to life in a dedicated retro virtual 
 `promptpet` is architected so that the shell prompt and GUI window coexist seamlessly with zero interference:
 
 - **Guaranteed Fast Prompt Latency (<5 ms):** The shell prompt path only appends a small event record (`command_finish`, exit code, timestamp) to `events.jsonl`. It never waits on GUI locks or blocks terminal execution. Benchmarks confirm prompt execution averages ~1.2 ms/op.
-- **Asynchronous Event IPC:** The GUI process polls `events.jsonl` once per second (`1 Hz`), maintaining an incremental timestamp cursor (`lastReadTs`). It reads new terminal events without file contention.
+- **Asynchronous Event IPC:** The GUI process polls `events.jsonl` once per second (`1 Hz`), maintaining an incremental byte offset cursor. It seeks and streams new terminal events without file contention.
 - **Independent State Isolation:** Prompt vitals and feeding live in `state.json`, while companion pet preferences, wellness timestamps, and mini-game high scores reside in `companion.json`.
 - **Headless Detection:** If launched without an active X11, Wayland, or desktop display server, `promptpet gui` exits cleanly with a helpful error message instead of crashing.
 
@@ -181,10 +180,11 @@ For technical deep dive, data flow, and package boundaries, see [ARCHITECTURE.md
 
 ```text
 promptpet                  show your pet's status card
+promptpet status           show pet status card and companion hearts
+promptpet pet [name|list]  pet your pet, switch, or list companion pets
 promptpet init <shell>     print the shell hook (zsh, bash, fish)
 promptpet completion <sh>  print shell autocompletions (zsh, bash, fish)
 promptpet gui              launch virtual companion handheld mini-window
-promptpet pet [name]       list companion roster or switch active companion
 promptpet games            list mini-games, controls, and high scores
 promptpet play             play with your pet (terminal interaction)
 promptpet name <name>      rename your prompt pet (1-20 chars: letters, digits, spaces, - _ ' .)
@@ -198,7 +198,10 @@ promptpet --version        print current version
 ## Environment Variables
 
 - `PROMPTPET_HOME`: Overrides the default state directory. Defaults to `$XDG_STATE_HOME/promptpet` (if absolute) or `$HOME/.local/state/promptpet`.
+- `PROMPTPET_COMPANION_STATE_FILE`: Overrides the companion state file path (defaults to `$PROMPTPET_HOME/companion.json`).
+- `PROMPTPET_EVENT_FILE`: Overrides the event stream file path (defaults to `$PROMPTPET_HOME/events.jsonl`).
 - `PROMPTPET_DISABLE`: Set to any non-empty value to temporarily disable prompt segment rendering.
+- `PROMPTPET_HEADLESS`: Set to `1` to simulate a headless environment without display.
 - `PROMPTPET_SEGMENT`: Populated in `zsh` and `bash` hooks for manual placement in custom prompt themes.
 
 ---
