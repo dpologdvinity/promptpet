@@ -75,10 +75,11 @@ age 1 day · 5 meals · 0 adventures
 Want your pet on your desktop alongside your terminal? Run:
 
 ```sh
-promptpet gui
+promptpet gui            # run in this terminal
+promptpet gui --detach   # run in the background as a desktop companion
 ```
 
-This opens a pocket-sized (240×340) retro handheld LCD console displaying your companion with animated blinking, breathing, reactions to shell commands, and 8 playable mini-games!
+This opens a pocket-sized (240×340) retro handheld LCD console, floating always-on-top and borderless in the bottom-right corner of your screen. It shows your companion with idle animations, reactions to shell commands, and 8 playable mini-games!
 
 ---
 
@@ -87,12 +88,17 @@ This opens a pocket-sized (240×340) retro handheld LCD console displaying your 
 The companion window brings your shell pet to life in a dedicated retro virtual device:
 
 - **Ultra-Lightweight & Smooth:** Handcrafted vector art rendered via Ebitengine. Runs at 20 TPS / ~1% CPU when idle; switches to 60 TPS during mini-gameplay for fluid responsiveness.
-- **Real-Time Shell Awareness:** Reacts to shell successes, command errors, and work velocity via asynchronous event IPC.
+- **Real-Time Shell Awareness:** Reacts to shell successes, command errors, and work velocity via asynchronous event IPC, with visual props: sparkles when you are in the flow, confetti on success, a cup of tea and a band-aid after an error, dozing "zzz" when idle, a morning coffee and a night-time nightcap.
+- **Casing Colours:** Lavender, Coral, Mint or Midnight; your choice is saved.
 - **Mini-Window Controls:**
   - `Tab`: Cycle through the 8 companion pets.
   - `1` – `8`: Launch one of the 8 keyboard mini-games directly.
+  - `K`: Change the casing colour.
   - `M`: Toggle retro 8-bit sound blips on/off.
   - `Esc`: Exit the current mini-game back to companion mode.
+  - `Q`: Quit the companion window.
+  - **Face buttons (click):** in companion mode `A`/`C` switch to the previous/next pet and `B` changes the casing. In games, `A` = `Left`/`1`, `B` = `Space`/`2`, `C` = `Right`/`3`.
+  - **Drag** the casing with the mouse to move the window.
 
 ---
 
@@ -134,9 +140,9 @@ Take a short mental break with 8 retro mini-games playable in the companion wind
 | `2` | **Puddle Leap** | Time your jumps over approaching mud puddles | `Spacebar` (or `Up` arrow / `W`) |
 | `3` | **Look Away** | Quickly match target directions to rest and stretch your eyes | `Left` / `Right` arrows (or `A` / `D`) |
 | `4` | **Rhythm Dance** | Tap dancing arrow notes precisely as they reach the target line | `Arrow keys` (or `W` `A` `S` `D`) |
-| `5` | **Memory Simon** | Repeat the flashing colored sequence without making a mistake | `1`, `2`, `3` |
+| `5` | **Memory Simon** | Repeat a flashing 3-to-5 step colored sequence without making a mistake | `1`, `2`, `3` |
 | `6` | **Whack-a-Bug** | Whack pesky bugs popping from 3 burrows while avoiding ladybugs | `1`, `2`, `3` |
-| `7` | **Balloon Pop** | Aim your dart launcher angle and pop rising balloons | `Up` / `Down` arrows (or `W` / `S`) to aim, `Spacebar` to shoot |
+| `7` | **Balloon Pop** | Aim your dart launcher and pop 5 rising balloons with only 6 darts | `Up` / `Down` arrows (or `W` / `S`) to aim, `Spacebar` to shoot |
 | `8` | **Word Snack** | Type the drifting letters of delicious snacks before they drift away | Keyboard letters `A` – `Z` |
 
 View high scores anytime from your terminal: `promptpet games`.
@@ -145,7 +151,7 @@ View high scores anytime from your terminal: `promptpet games`.
 
 ## Gentle Wellness Reminders
 
-The companion monitors healthy coding habits and delivers subtle in-character speech bubbles:
+The companion monitors healthy coding habits and delivers subtle in-character speech bubbles, with a matching prop (a glass of water, stretching arrows, tiny binoculars) for 30 seconds:
 
 - **Drink Water (every 45 min):** Prompts you to hydrate (*"Quench your spark with a fresh glass of water!"*).
 - **Stretch (every 50 min):** Encourages shoulder and posture reset (*"Ears up, gentle hop stretch!"*).
@@ -181,11 +187,11 @@ For technical deep dive, data flow, and package boundaries, see [ARCHITECTURE.md
 
 ```text
 promptpet                  show your pet's status card
-promptpet status           show pet status card and companion hearts
+promptpet status           show pet status card, companion hearts, casing and high scores
 promptpet pet [name|list]  pet your pet, switch, or list companion pets
 promptpet init <shell>     print the shell hook (zsh, bash, fish)
 promptpet completion <sh>  print shell autocompletions (zsh, bash, fish)
-promptpet gui              launch virtual companion handheld mini-window
+promptpet gui [--detach]   launch virtual companion handheld mini-window (--detach: in background)
 promptpet games            list mini-games, controls, and high scores
 promptpet play             play with your pet (terminal interaction)
 promptpet name <name>      rename your prompt pet (1-20 chars: letters, digits, spaces, - _ ' .)
