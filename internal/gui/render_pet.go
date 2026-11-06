@@ -56,21 +56,21 @@ func DrawPet(screen *ebiten.Image, pet companion.PetDef, ticks int64, scene Scen
 	// 2. Render mascot based on PetID
 	switch pet.ID {
 	case companion.PetUsagi:
-		drawUsagi(screen, cx, cy, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
+		drawUsagi(screen, cx, cy, ticks, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
 	case companion.PetKochi:
 		drawKochi(screen, cx, cy, ticks, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
 	case companion.PetPuff:
 		drawPuff(screen, cx, cy, ticks, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
 	case companion.PetMochi:
-		drawMochi(screen, cx, cy, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
+		drawMochi(screen, cx, cy, ticks, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
 	case companion.PetSpook:
 		drawSpook(screen, cx, cy, ticks, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
 	case companion.PetPippin:
-		drawPippin(screen, cx, cy, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
+		drawPippin(screen, cx, cy, ticks, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
 	case companion.PetGromit:
-		drawGromit(screen, cx, cy, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
+		drawGromit(screen, cx, cy, ticks, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
 	case companion.PetBoba:
-		drawBoba(screen, cx, cy, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
+		drawBoba(screen, cx, cy, ticks, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr)
 	default:
 		// Fallback generic cute blob
 		vector.DrawFilledCircle(screen, cx, cy, 26, primClr, true)
@@ -84,14 +84,15 @@ func DrawPet(screen *ebiten.Image, pet companion.PetDef, ticks int64, scene Scen
 }
 
 // 1. Usagi: Dumpling Bunny
-func drawUsagi(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
-	// Floppy bunny ears
+func drawUsagi(screen *ebiten.Image, cx, cy float32, ticks int64, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
+	// Floppy bunny ears; the right ear flops down and springs back up.
+	flop := float32(math.Max(0, math.Sin(float64(ticks)*0.08)) * 6.0)
 	// Outer ears
 	drawRoundedRect(screen, cx-18, cy-32, 9, 22, 4.5, primClr)
-	drawRoundedRect(screen, cx+9, cy-32, 9, 22, 4.5, primClr)
+	drawRoundedRect(screen, cx+9, cy-32+flop, 9, 22-flop, 4.5, primClr)
 	// Inner ear pastel accent
 	drawRoundedRect(screen, cx-16.5, cy-28, 6, 15, 3, accentClr)
-	drawRoundedRect(screen, cx+10.5, cy-28, 6, 15, 3, accentClr)
+	drawRoundedRect(screen, cx+10.5, cy-28+flop, 6, 15-flop, 3, accentClr)
 
 	// Round dumpling body
 	vector.DrawFilledCircle(screen, cx, cy, 26, primClr, true)
@@ -109,6 +110,13 @@ func drawUsagi(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushCl
 	// Cheeks
 	vector.DrawFilledCircle(screen, cx-14, cy+5, 4.5, blushClr, true)
 	vector.DrawFilledCircle(screen, cx+14, cy+5, 4.5, blushClr, true)
+
+	// Strawberry held in the paws, lifted to the mouth for a nibble.
+	nibble := float32(math.Max(0, math.Sin(float64(ticks)*0.2)) * 3.0)
+	berryClr := color.RGBA{R: 240, G: 90, B: 110, A: 255}
+	leafClr := color.RGBA{R: 120, G: 200, B: 100, A: 255}
+	vector.DrawFilledCircle(screen, cx, cy+13-nibble, 4, berryClr, true)
+	vector.DrawFilledCircle(screen, cx, cy+9-nibble, 1.8, leafClr, true)
 }
 
 // 2. Kochi: Shiba Pup
@@ -181,7 +189,7 @@ func drawPuff(screen *ebiten.Image, cx, cy float32, ticks int64, primClr, accent
 }
 
 // 4. Mochi: Strawberry Cat
-func drawMochi(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
+func drawMochi(screen *ebiten.Image, cx, cy float32, ticks int64, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
 	// Cat ears
 	vector.DrawFilledCircle(screen, cx-16, cy-20, 7.5, primClr, true)
 	vector.DrawFilledCircle(screen, cx-16, cy-20, 4, accentClr, true)
@@ -209,6 +217,17 @@ func drawMochi(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushCl
 	// Cheeks
 	vector.DrawFilledCircle(screen, cx-14, cy+6, 4.5, blushClr, true)
 	vector.DrawFilledCircle(screen, cx+14, cy+6, 4.5, blushClr, true)
+
+	// Floating sparkle drifting beside the head; the left paw swats up at it.
+	t := float64(ticks)
+	sx := cx - 32 + float32(math.Sin(t*0.07)*4)
+	sy := cy - 14 + float32(math.Cos(t*0.11)*5)
+	sparkClr := color.RGBA{R: 255, G: 240, B: 170, A: 255}
+	vector.StrokeLine(screen, sx-4, sy, sx+4, sy, 1.5, sparkClr, true)
+	vector.StrokeLine(screen, sx, sy-4, sx, sy+4, 1.5, sparkClr, true)
+	reach := float32(math.Max(0, math.Sin(t*0.18)) * 9)
+	vector.DrawFilledCircle(screen, cx-20-reach*0.4, cy+14-reach, 4.5, primClr, true)
+	vector.DrawFilledCircle(screen, cx-20-reach*0.4, cy+15-reach, 2, accentClr, true)
 }
 
 // 5. Spook: Cloud Ghostie
@@ -243,7 +262,14 @@ func drawSpook(screen *ebiten.Image, cx, cy float32, ticks int64, primClr, accen
 }
 
 // 6. Pippin: Cozy Penguin
-func drawPippin(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
+func drawPippin(screen *ebiten.Image, cx, cy float32, ticks int64, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
+	// Waddle: the body sways side to side while the feet alternate lifting.
+	t := float64(ticks)
+	sway := float32(math.Sin(t*0.2) * 2.5)
+	lift := float32(math.Cos(t*0.2) * 1.5)
+	feetX := cx
+	cx += sway
+
 	// Penguin dark body
 	vector.DrawFilledCircle(screen, cx, cy, 26, primClr, true)
 
@@ -253,8 +279,9 @@ func drawPippin(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushC
 
 	// Cozy knitted scarf
 	vector.DrawFilledRect(screen, cx-16, cy+8, 32, 7, accentClr, true)
-	// Scarf dangling tail
-	vector.DrawFilledRect(screen, cx+7, cy+14, 6, 10, accentClr, true)
+	// Scarf dangling tail flutters against the sway
+	flutter := float32(math.Sin(t*0.35) * 2)
+	vector.DrawFilledRect(screen, cx+7-sway+flutter, cy+14, 6, 10, accentClr, true)
 
 	// Flippers on sides
 	vector.DrawFilledCircle(screen, cx-22, cy+4, 6, primClr, true)
@@ -264,9 +291,9 @@ func drawPippin(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushC
 	beakClr := color.RGBA{R: 250, G: 160, B: 60, A: 255}
 	vector.DrawFilledCircle(screen, cx, cy+1, 3, beakClr, true)
 
-	// Orange feet
-	vector.DrawFilledCircle(screen, cx-7, cy+23, 4, beakClr, true)
-	vector.DrawFilledCircle(screen, cx+7, cy+23, 4, beakClr, true)
+	// Orange feet stay planted under the original centre
+	vector.DrawFilledCircle(screen, feetX-7, cy+23-max(lift, 0), 4, beakClr, true)
+	vector.DrawFilledCircle(screen, feetX+7, cy+23-max(-lift, 0), 4, beakClr, true)
 
 	// Eyes with shine
 	drawEyes(screen, cx, cy-3, 3, 8, darkEyeClr, whiteGlintClr)
@@ -277,7 +304,7 @@ func drawPippin(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushC
 }
 
 // 7. Gromit: Rainy Froggy
-func drawGromit(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
+func drawGromit(screen *ebiten.Image, cx, cy float32, ticks int64, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
 	// Big elevated froggy eye bumps
 	vector.DrawFilledCircle(screen, cx-13, cy-18, 9, primClr, true)
 	vector.DrawFilledCircle(screen, cx+13, cy-18, 9, primClr, true)
@@ -288,20 +315,27 @@ func drawGromit(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushC
 	// Yellow tummy
 	vector.DrawFilledCircle(screen, cx, cy+8, 13, accentClr, true)
 
-	// Big eyes inside the bumps
-	vector.DrawFilledCircle(screen, cx-13, cy-18, 5, darkEyeClr, true)
-	vector.DrawFilledCircle(screen, cx-14.5, cy-19.5, 1.8, whiteGlintClr, true)
-	vector.DrawFilledCircle(screen, cx+13, cy-18, 5, darkEyeClr, true)
-	vector.DrawFilledCircle(screen, cx+11.5, cy-19.5, 1.8, whiteGlintClr, true)
+	// Big eyes inside the bumps, closing in a slow peaceful blink
+	// for 6 of every 90 ticks (~4.5s cycle at the 20 TPS idle rate).
+	smileClr := color.RGBA{R: 50, G: 100, B: 60, A: 255}
+	if ticks%90 < 6 {
+		vector.StrokeLine(screen, cx-17, cy-18, cx-9, cy-18, 1.8, smileClr, true)
+		vector.StrokeLine(screen, cx+9, cy-18, cx+17, cy-18, 1.8, smileClr, true)
+	} else {
+		vector.DrawFilledCircle(screen, cx-13, cy-18, 5, darkEyeClr, true)
+		vector.DrawFilledCircle(screen, cx-14.5, cy-19.5, 1.8, whiteGlintClr, true)
+		vector.DrawFilledCircle(screen, cx+13, cy-18, 5, darkEyeClr, true)
+		vector.DrawFilledCircle(screen, cx+11.5, cy-19.5, 1.8, whiteGlintClr, true)
+	}
 
 	// Wide froggy smile line
-	smileClr := color.RGBA{R: 50, G: 100, B: 60, A: 255}
 	vector.StrokeLine(screen, cx-8, cy+2, cx+8, cy+2, 1.5, smileClr, true)
 
-	// Leaf umbrella stem above head
+	// Leaf umbrella stem above head, swaying gently in the breeze
+	leafSway := float32(math.Sin(float64(ticks)*0.05) * 2)
 	leafClr := color.RGBA{R: 120, G: 200, B: 100, A: 255}
-	vector.StrokeLine(screen, cx+2, cy-22, cx+6, cy-32, 1.5, leafClr, true)
-	drawRoundedRect(screen, cx-2, cy-36, 18, 6, 3, leafClr)
+	vector.StrokeLine(screen, cx+2, cy-22, cx+6+leafSway, cy-32, 1.5, leafClr, true)
+	drawRoundedRect(screen, cx-2+leafSway, cy-36, 18, 6, 3, leafClr)
 
 	// Cheeks
 	vector.DrawFilledCircle(screen, cx-15, cy+4, 4.5, blushClr, true)
@@ -309,7 +343,12 @@ func drawGromit(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushC
 }
 
 // 8. Boba: Tea Panda
-func drawBoba(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
+func drawBoba(screen *ebiten.Image, cx, cy float32, ticks int64, primClr, accentClr, blushClr, darkEyeClr, whiteGlintClr color.RGBA) {
+	// Rolly-polly wobble: the whole panda rocks side to side like a ball.
+	wobble := float32(math.Sin(float64(ticks)*0.09) * 3)
+	cx += wobble
+	cy += float32(math.Abs(float64(wobble))) * 0.4
+
 	// Panda round black ears
 	vector.DrawFilledCircle(screen, cx-18, cy-18, 8.5, accentClr, true)
 	vector.DrawFilledCircle(screen, cx+18, cy-18, 8.5, accentClr, true)
@@ -338,6 +377,13 @@ func drawBoba(screen *ebiten.Image, cx, cy float32, primClr, accentClr, blushClr
 	// Boba tapioca pearls
 	vector.DrawFilledCircle(screen, cx-3, cy+22, 1.8, accentClr, true)
 	vector.DrawFilledCircle(screen, cx+2, cy+22, 1.8, accentClr, true)
+	// A pearl sipped up the straw every 40 ticks
+	sip := float32(ticks%40) / 40
+	vector.DrawFilledCircle(screen, cx+2, cy+20-sip*12, 1.4, accentClr, true)
+
+	// Chubby paws hugging the cup
+	vector.DrawFilledCircle(screen, cx-8, cy+18, 4, accentClr, true)
+	vector.DrawFilledCircle(screen, cx+8, cy+18, 4, accentClr, true)
 
 	// Cheeks
 	vector.DrawFilledCircle(screen, cx-16, cy+5, 4, blushClr, true)
