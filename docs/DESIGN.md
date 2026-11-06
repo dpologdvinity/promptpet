@@ -2,7 +2,7 @@
 
 **Document:** `docs/DESIGN.md`  
 **Date:** 2026-10-24  
-**Status:** Approved by User · Ready for Implementation Planning  
+**Status:** Approved by User · Implemented  
 
 ---
 
@@ -153,7 +153,7 @@ The companion reacts dynamically to the user's computer and coding rhythm via 5 
 
 ### Inter-Process Communication (Shell CLI ↔ Mini-Window)
 - **Non-blocking Event Stream:**
-  - The existing shell CLI hooks (`promptpet prompt`, `precmd`) append a tiny single-line JSON event to `$XDG_STATE_HOME/promptpet/events.jsonl` (or write to a local domain socket if available).
+  - The existing shell CLI hooks (`promptpet prompt`, `precmd`) append a tiny single-line JSON event to `$XDG_STATE_HOME/promptpet/events.jsonl`. (A domain socket was considered and dropped: the append already meets the <1ms budget and works when the window is closed.)
   - Shell execution overhead is strictly bounded (<1ms file append / non-blocking socket write).
   - The GUI companion window reads newly arrived events on its 15-30 FPS tick.
 - **Event Schema:**
@@ -176,14 +176,14 @@ The companion reacts dynamically to the user's computer and coding rhythm via 5 
   - **In-Game Mode:** 60 FPS for crisp keyboard responsiveness.
   - **Idle Desktop Companion Mode:** Throttled to 15–20 FPS with sleep pauses, yielding <1.5% CPU load.
 - **State Persistence:**
-  - Saved to `$XDG_STATE_HOME/promptpet/state.json`: active pet selection, high scores for each mini-game, friendship heart counters, casing color choice.
+  - Saved to `$XDG_STATE_HOME/promptpet/companion.json` (`state.json` belongs to the shell prompt pet): active pet selection, high scores for each mini-game, friendship heart counters, casing color choice.
 
 ---
 
 ## 8. CLI Commands & Workflow
 
 - `promptpet init <bash|zsh|fish>`: Emits hook functions that update shell prompt and notify the companion window.
-- `promptpet gui`: Launches the floating virtual companion mini-window.
+- `promptpet gui [--detach]`: Launches the floating virtual companion mini-window (`--detach` runs it as a background desktop daemon). In the window: `Tab` or A/C switch pets, B or `K` change casing, `1`-`8` start games, `M` mutes, `Q` quits, drag the casing to move it.
 - `promptpet prompt`: Fast prompt segment renderer (keeps shell responsive).
 - `promptpet status`: Shows pet stats, friendship level, and mini-game high scores in terminal.
 - `promptpet pet <name>`: Switch active pet via CLI command if window is closed.
