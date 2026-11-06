@@ -95,7 +95,17 @@ func checkDuration(t *testing.T, seg string, minMs int) {
 	}
 }
 
+// bashHasEpochRealtime reports whether the installed bash has $EPOCHREALTIME
+// (bash 5+). macOS ships bash 3.2, where the hook must omit the duration.
+func bashHasEpochRealtime(t *testing.T) bool {
+	t.Helper()
+	return exec.Command("bash", "--norc", "-c", `[[ -n ${EPOCHREALTIME-} ]]`).Run() == nil
+}
+
 func TestBashHookDuration(t *testing.T) {
+	if !bashHasEpochRealtime(t) {
+		t.Skip("bash < 5: no $EPOCHREALTIME or ${PS0@P}; fallback covered by TestBashHookDurationInteractive")
+	}
 	hook, _ := Script("bash")
 	f := filepath.Join(t.TempDir(), "h.bash")
 	os.WriteFile(f, []byte(hook), 0o644)
@@ -131,6 +141,14 @@ func TestBashHookDurationInteractive(t *testing.T) {
 	// prompts after: source (PS0 not yet installed), sleep, empty line (untimed), false
 	if strings.Contains(string(stderr), "unbound") || len(lines) != 4 {
 		t.Fatalf("log=%q stderr=%q", log, stderr)
+	}
+	if !bashHasEpochRealtime(t) {
+		// Old bash: the hook still reports every exit status, just without a duration.
+		want := []string{"ARGS:prompt --exit 0", "ARGS:prompt --exit 0", "ARGS:prompt --exit 0", "ARGS:prompt --exit 1"}
+		if strings.Join(lines, "\n") != strings.Join(want, "\n") {
+			t.Fatalf("bash < 5 log=%q", log)
+		}
+		return
 	}
 	if !strings.HasPrefix(lines[1], "ARGS:prompt --exit 0 --duration-ms=") || lines[2] != "ARGS:prompt --exit 0" || !strings.HasPrefix(lines[3], "ARGS:prompt --exit 1 --duration-ms=") {
 		t.Fatalf("log=%q", log)
