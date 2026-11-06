@@ -159,6 +159,22 @@ func TestZshHookDuration(t *testing.T) {
 	}
 }
 
+// TestZshHookNounset: users with `setopt nounset` must get no stderr on the first
+// prompt or after an empty Enter, when no preexec has set the start time.
+func TestZshHookNounset(t *testing.T) {
+	if _, err := exec.LookPath("zsh"); err != nil {
+		t.Skip("zsh not installed")
+	}
+	hook, _ := Script("zsh")
+	f := filepath.Join(t.TempDir(), "h.zsh")
+	os.WriteFile(f, []byte(hook), 0o644)
+	bin := fakeBin(t, argsBin)
+	out, errOut := runShell(t, "zsh", []string{"-f", "-c", `setopt nounset; source "$1"; (exit 3); _promptpet_precmd; echo "rc=$? seg=$PROMPTPET_SEGMENT"`, "x", f}, bin+":/usr/bin:/bin")
+	if strings.TrimSpace(out) != "rc=3 seg=ARGS:prompt --exit 3" || errOut != "" {
+		t.Fatalf("out=%q err=%q", out, errOut)
+	}
+}
+
 func TestFishHookDuration(t *testing.T) {
 	if _, err := exec.LookPath("fish"); err != nil {
 		t.Skip("fish not installed")

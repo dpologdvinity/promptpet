@@ -6,7 +6,7 @@ _promptpet_preexec() {
 }
 _promptpet_precmd() {
   local __pp_exit=$? __pp_dur=
-  if [[ -n $_promptpet_start && -n $EPOCHREALTIME ]]; then
+  if [[ -n ${_promptpet_start-} && -n ${EPOCHREALTIME-} ]]; then  # ${x-}: safe under nounset
     local -i __pp_ms
     (( __pp_ms = (EPOCHREALTIME - _promptpet_start) * 1000 ))
     __pp_dur="--duration-ms=$__pp_ms"
