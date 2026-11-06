@@ -132,8 +132,8 @@ func TestRhythmEvaluationGitMilestone(t *testing.T) {
 	if mood != companion.MoodFanfare {
 		t.Errorf("expected MoodFanfare, got %v", mood)
 	}
-	if speech != "5th commit! Amazing progress!" {
-		t.Errorf("expected '5th commit! Amazing progress!', got %q", speech)
+	if speech != "5th commit today! Amazing progress!" {
+		t.Errorf("expected '5th commit today! Amazing progress!', got %q", speech)
 	}
 
 	// 2. 10th commit milestone
@@ -144,8 +144,8 @@ func TestRhythmEvaluationGitMilestone(t *testing.T) {
 	if mood != companion.MoodFanfare {
 		t.Errorf("expected MoodFanfare, got %v", mood)
 	}
-	if speech != "10th commit! Amazing progress!" {
-		t.Errorf("expected '10th commit! Amazing progress!', got %q", speech)
+	if speech != "10th commit today! Amazing progress!" {
+		t.Errorf("expected '10th commit today! Amazing progress!', got %q", speech)
 	}
 
 	// 3. Regular commit pushed
@@ -170,5 +170,29 @@ func TestRhythmEvaluationGitMilestone(t *testing.T) {
 	}
 	if !strings.Contains(speech, "tea") {
 		t.Errorf("expected sympathy tea speech, got %q", speech)
+	}
+}
+
+func TestRhythmEvaluationBranchAndMerge(t *testing.T) {
+	now := time.Now()
+	s := &companion.State{}
+	cases := []struct {
+		ev         event.Event
+		mood       companion.RhythmMood
+		wantSpeech string
+	}{
+		{event.Event{GitAction: "branch", GitBranch: "feat/x"}, companion.MoodFanfare, "New branch feat/x! Adventure time!"},
+		{event.Event{GitAction: "merge", GitBranch: "main"}, companion.MoodFanfare, "Merged into main! Victory dance!"},
+		{event.Event{GitAction: "merge"}, companion.MoodFanfare, "Merge complete! Victory dance!"},
+		{event.Event{GitAction: "merge", ExitCode: 1}, companion.MoodSympathy, "You got this! Here's some tea"},
+		// A milestone count without a fresh commit (e.g. a later checkout) must not refire.
+		{event.Event{CommitCount: 5}, companion.MoodCheer, "Yay! Success!"},
+	}
+	for _, c := range cases {
+		c.ev.Timestamp = now.Unix()
+		mood, speech := s.EvaluateRhythm([]event.Event{c.ev}, now)
+		if mood != c.mood || speech != c.wantSpeech {
+			t.Errorf("%+v: got (%v, %q), want (%v, %q)", c.ev, mood, speech, c.mood, c.wantSpeech)
+		}
 	}
 }

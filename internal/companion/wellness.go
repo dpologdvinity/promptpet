@@ -136,19 +136,30 @@ func (s *State) EvaluateRhythm(events []event.Event, now time.Time) (RhythmMood,
 		return MoodSympathy, "You got this! Here's some tea"
 	}
 
-	// Git milestone detection: check latest event or recent events in batch
+	// Git milestones (DESIGN §6.5): new branch, merge, every 5th commit of
+	// the day. Newest successful git event in the batch wins.
 	for i := len(events) - 1; i >= 0; i-- {
 		ev := events[i]
-		if ev.ExitCode == 0 {
-			if ev.GitAction == "commit" {
-				if ev.CommitCount > 0 && ev.CommitCount%5 == 0 {
-					return MoodFanfare, fmt.Sprintf("%dth commit! Amazing progress!", ev.CommitCount)
-				}
-				return MoodCheer, "Commit pushed! High five!"
+		if ev.ExitCode != 0 {
+			continue
+		}
+		switch ev.GitAction {
+		case "branch":
+			if ev.GitBranch == "" {
+				return MoodFanfare, "New branch! Adventure time!"
 			}
+			return MoodFanfare, fmt.Sprintf("New branch %s! Adventure time!", ev.GitBranch)
+		case "merge":
+			if ev.GitBranch == "" {
+				return MoodFanfare, "Merge complete! Victory dance!"
+			}
+			return MoodFanfare, fmt.Sprintf("Merged into %s! Victory dance!", ev.GitBranch)
+		case "commit":
+			// Multiples of 5 always take the "th" suffix.
 			if ev.CommitCount > 0 && ev.CommitCount%5 == 0 {
-				return MoodFanfare, fmt.Sprintf("%dth commit! Amazing progress!", ev.CommitCount)
+				return MoodFanfare, fmt.Sprintf("%dth commit today! Amazing progress!", ev.CommitCount)
 			}
+			return MoodCheer, "Commit pushed! High five!"
 		}
 	}
 
