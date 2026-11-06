@@ -11,6 +11,7 @@ import (
 	"github.com/dpologdvinity/promptpet/internal/companion"
 	"github.com/dpologdvinity/promptpet/internal/event"
 	"github.com/dpologdvinity/promptpet/internal/gui"
+	"github.com/dpologdvinity/promptpet/internal/gui/games"
 )
 
 func TestAppInitialization(t *testing.T) {
@@ -500,5 +501,49 @@ func TestAppSoundMuteToggle(t *testing.T) {
 	// Update should succeed without error
 	if err := app.Update(); err != nil {
 		t.Fatalf("update failed: %v", err)
+	}
+}
+
+func TestAppFaceButtons(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := gui.Config{
+		StatePath: filepath.Join(tmp, "companion.json"),
+		EventPath: filepath.Join(tmp, "events.jsonl"),
+	}
+	app, err := gui.NewApp(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pets := companion.GetAllPets()
+	start := app.ActivePet().ID
+
+	// A wraps backwards from the first pet to the last; C goes forward again.
+	app.PressButton(games.ButtonA)
+	if got := app.ActivePet().ID; got != pets[len(pets)-1].ID {
+		t.Fatalf("button A: expected last pet %s, got %s", pets[len(pets)-1].ID, got)
+	}
+	app.PressButton(games.ButtonC)
+	if got := app.ActivePet().ID; got != start {
+		t.Fatalf("button C: expected %s, got %s", start, got)
+	}
+
+	// B cycles the casing and persists it.
+	app.PressButton(games.ButtonB)
+	if app.Casing() != "coral" {
+		t.Fatalf("button B: expected coral casing, got %q", app.Casing())
+	}
+	saved, err := companion.LoadState(cfg.StatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.Casing != "coral" {
+		t.Errorf("expected casing saved as coral, got %q", saved.Casing)
+	}
+
+	// Every casing renders.
+	screen := ebiten.NewImage(240, 340)
+	for range companion.Casings {
+		app.PressButton(games.ButtonB)
+		app.Draw(screen)
 	}
 }

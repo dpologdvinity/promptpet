@@ -23,6 +23,20 @@ type State struct {
 // Casings lists the device shell colours in cycle order; the first is the default.
 var Casings = []string{"lavender", "coral", "mint", "midnight"}
 
+// CycleCasing advances to the next casing colour and returns it.
+// An empty or unknown casing counts as the default, so the first cycle gives the second colour.
+func (s *State) CycleCasing() string {
+	next := 1
+	for i, c := range Casings {
+		if c == s.Casing {
+			next = (i + 1) % len(Casings)
+			break
+		}
+	}
+	s.Casing = Casings[next]
+	return s.Casing
+}
+
 const DefaultPet = "usagi"
 
 func NewDefaultState() *State {

@@ -43,6 +43,8 @@ type App struct {
 	lastEventPoll   time.Time
 	lastWellness    time.Time
 	idleThrottled   bool
+	dragging        bool // left mouse held on the casing (not a button): moving the window
+	dragX, dragY    int  // cursor position where the drag started
 	activeGame      games.MiniGame
 }
 
@@ -135,15 +137,49 @@ func (a *App) LastEventOffset() int64 {
 func (a *App) CyclePet() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.cyclePetLocked()
+	a.cyclePetLocked(1)
 }
 
-func (a *App) cyclePetLocked() {
+// PressButton handles a click on face button A, B or C in the companion view:
+// A and C switch to the previous/next pet, B cycles the casing colour.
+// While a game runs, buttons go to the game instead (see Update).
+func (a *App) PressButton(b games.Button) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.pressButtonLocked(b)
+}
+
+func (a *App) pressButtonLocked(b games.Button) {
+	switch b {
+	case games.ButtonA:
+		a.cyclePetLocked(-1)
+	case games.ButtonB:
+		a.cycleCasingLocked()
+	case games.ButtonC:
+		a.cyclePetLocked(1)
+	}
+}
+
+// Casing returns the current device casing colour name.
+func (a *App) Casing() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.state.Casing
+}
+
+func (a *App) cycleCasingLocked() {
+	sound.PlayBlip()
+	a.speech = "New look: " + a.state.CycleCasing() + "!"
+	_ = companion.SaveState(a.cfg.StatePath, a.state)
+}
+
+func (a *App) cyclePetLocked(step int) {
 	if len(a.pets) == 0 {
 		return
 	}
 	sound.PlayBlip()
-	a.petIndex = (a.petIndex + 1) % len(a.pets)
+	n := len(a.pets)
+	a.petIndex = ((a.petIndex+step)%n + n) % n
 	a.activePet = a.pets[a.petIndex]
 	a.state.ActivePet = string(a.activePet.ID)
 	_ = companion.SaveState(a.cfg.StatePath, a.state)
@@ -242,6 +278,8 @@ func (a *App) Update() error {
 
 	a.ticks++
 
+	button, buttonJust := a.pollMouseLocked()
+
 	// 1. If mini-game is active, prioritize game loop and handle Esc early exit
 	if a.activeGame != nil {
 		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
@@ -250,6 +288,7 @@ func (a *App) Update() error {
 			return nil
 		}
 
+		games.SetVirtualButton(button, buttonJust)
 		done, won, score := a.activeGame.Update()
 		if done {
 			a.finishGameLocked(won, score)
@@ -294,9 +333,24 @@ func (a *App) Update() error {
 		return nil
 	}
 
+	if buttonJust {
+		a.pressButtonLocked(button)
+	}
+
 	// Tab key cycles active pet
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		a.cyclePetLocked()
+		a.cyclePetLocked(1)
+	}
+
+	// K key cycles the casing colour
+	if inpututil.IsKeyJustPressed(ebiten.KeyK) {
+		a.cycleCasingLocked()
+	}
+
+	// Q quits: the borderless window has no close button
+	if inpututil.IsKeyJustPressed(ebiten.KeyQ) {
+		a.mu.Unlock()
+		return ebiten.Termination
 	}
 
 	// M key toggles sound mute
@@ -350,6 +404,31 @@ func (a *App) Update() error {
 	return nil
 }
 
+// pollMouseLocked returns the face button held by the left mouse button (and whether
+// it was just pressed), and drags the borderless window when the press starts elsewhere.
+func (a *App) pollMouseLocked() (games.Button, bool) {
+	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		a.dragging = false
+		return games.ButtonNone, false
+	}
+	mx, my := ebiten.CursorPosition()
+	b := buttonAt(float32(mx), float32(my))
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		if b != games.ButtonNone {
+			return b, true
+		}
+		a.dragging, a.dragX, a.dragY = true, mx, my
+	}
+	if a.dragging {
+		// The cursor is window-relative, so shifting the window by the cursor's
+		// offset from the grab point keeps the grab point under the cursor.
+		wx, wy := ebiten.WindowPosition()
+		ebiten.SetWindowPosition(wx+mx-a.dragX, wy+my-a.dragY)
+		return games.ButtonNone, false
+	}
+	return b, false
+}
+
 // Draw renders the retro handheld device casing, LCD screen, pet, and speech bubble.
 func (a *App) Draw(screen *ebiten.Image) {
 	a.mu.Lock()
@@ -359,9 +438,10 @@ func (a *App) Draw(screen *ebiten.Image) {
 	activeGame := a.activeGame
 	mood := a.mood
 	wellness := a.wellness
+	casing := a.state.Casing
 	a.mu.Unlock()
 
-	DrawDevice(screen, pet)
+	DrawDevice(screen, pet, casing)
 	if activeGame != nil {
 		activeGame.Draw(screen)
 	} else {
@@ -373,6 +453,13 @@ func (a *App) Draw(screen *ebiten.Image) {
 // Layout returns the fixed virtual screen size of 240x340 px.
 func (a *App) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return 240, 340
+}
+
+// cornerPosition places the 240x340 window at the bottom-right of a monitor of the given size,
+// leaving room for a taskbar or dock.
+func cornerPosition(monitorW, monitorH int) (x, y int) {
+	const marginX, marginY = 24, 72
+	return max(0, monitorW-240-marginX), max(0, monitorH-340-marginY)
 }
 
 func isHeadless() bool {
@@ -399,6 +486,12 @@ func Run(cfg Config) error {
 	// 20 TPS when idle keeps CPU low; games raise it to 60 (see launchGameLocked).
 	ebiten.SetWindowSize(240, 340)
 	ebiten.SetWindowTitle("PromptPet")
+	// Floating, borderless and pinned to the corner (DESIGN §3); drag the casing to move it.
+	ebiten.SetWindowDecorated(false)
+	ebiten.SetWindowFloating(true)
+	if m := ebiten.Monitor(); m != nil {
+		ebiten.SetWindowPosition(cornerPosition(m.Size()))
+	}
 	ebiten.SetTPS(20)
 
 	return ebiten.RunGame(app)

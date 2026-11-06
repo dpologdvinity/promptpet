@@ -99,3 +99,17 @@ func TestDefaultStatePath(t *testing.T) {
 		t.Errorf("expected default fallback path %q, got %q", expected, p)
 	}
 }
+
+func TestCycleCasing(t *testing.T) {
+	s := companion.NewDefaultState()
+	want := []string{"coral", "mint", "midnight", "lavender", "coral"}
+	for i, w := range want {
+		if got := s.CycleCasing(); got != w {
+			t.Fatalf("cycle %d: got %q, want %q", i, got, w)
+		}
+	}
+	s.Casing = "plaid" // unknown values recover to the default's successor
+	if got := s.CycleCasing(); got != "coral" {
+		t.Fatalf("unknown casing: got %q, want coral", got)
+	}
+}
