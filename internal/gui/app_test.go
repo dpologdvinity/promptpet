@@ -480,8 +480,9 @@ func TestAppLastEventOffsetIncremental(t *testing.T) {
 	if newOffset <= initialOffset {
 		t.Fatalf("expected offset to advance past %d, got %d", initialOffset, newOffset)
 	}
-	if app.Speech() != "Commit pushed! High five!" {
-		t.Errorf("expected 'Commit pushed! High five!', got %q", app.Speech())
+	// A plain (non-milestone) commit is a cheer: the pet speaks its own cheer line.
+	if want := app.ActivePet().SpeechFor("cheer"); app.Speech() != want {
+		t.Errorf("expected %q, got %q", want, app.Speech())
 	}
 }
 

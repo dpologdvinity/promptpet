@@ -17,7 +17,11 @@ type State struct {
 	LastStretchTime     int64          `json:"last_stretch_time"`
 	LastLookAwayTime    int64          `json:"last_lookaway_time"`
 	TotalCommandsWorked int            `json:"total_commands_worked"`
+	Casing              string         `json:"casing"`
 }
+
+// Casings lists the device shell colours in cycle order; the first is the default.
+var Casings = []string{"lavender", "coral", "mint", "midnight"}
 
 const DefaultPet = "usagi"
 

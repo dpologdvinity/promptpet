@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
@@ -38,13 +37,17 @@ type App struct {
 	ticks           int64
 	speech          string
 	mood            companion.RhythmMood
+	wellness        companion.WellnessType // reminder currently shown, cleared at wellnessUntil
+	wellnessUntil   time.Time
 	lastEventOffset int64
 	lastEventPoll   time.Time
 	lastWellness    time.Time
 	idleThrottled   bool
-	throttleSleep   time.Duration
 	activeGame      games.MiniGame
 }
+
+// wellnessPropDuration is how long a reminder prop (water glass, stretch, binoculars) stays on screen.
+const wellnessPropDuration = 30 * time.Second
 
 // NewApp initializes a new companion application.
 func NewApp(cfg Config) (*App, error) {
@@ -318,7 +321,7 @@ func (a *App) Update() error {
 			if len(events) > 0 {
 				mood, rSpeech := a.state.EvaluateRhythm(events, now)
 				a.mood = mood
-				if rSpeech != "" && (strings.Contains(rSpeech, "commit") || strings.Contains(rSpeech, "High five!")) {
+				if mood == companion.MoodFanfare && rSpeech != "" {
 					a.speech = rSpeech
 				} else {
 					a.speech = a.activePet.SpeechFor(string(mood))
@@ -327,12 +330,18 @@ func (a *App) Update() error {
 		}
 	}
 
+	if a.wellness != companion.WellnessNone && now.After(a.wellnessUntil) {
+		a.wellness = companion.WellnessNone
+	}
+
 	// 4. Wellness check: evaluate hydration, stretch, and eye rest intervals
 	if now.Sub(a.lastWellness) >= 2*time.Second {
 		a.lastWellness = now
 		reminder := a.state.CheckWellness(now)
 		if reminder != companion.WellnessNone {
 			a.speech = a.activePet.SpeechFor(string(reminder))
+			a.wellness = reminder
+			a.wellnessUntil = now.Add(wellnessPropDuration)
 			_ = companion.SaveState(a.cfg.StatePath, a.state)
 		}
 	}
@@ -348,13 +357,15 @@ func (a *App) Draw(screen *ebiten.Image) {
 	ticks := a.ticks
 	speech := a.speech
 	activeGame := a.activeGame
+	mood := a.mood
+	wellness := a.wellness
 	a.mu.Unlock()
 
 	DrawDevice(screen, pet)
 	if activeGame != nil {
 		activeGame.Draw(screen)
 	} else {
-		DrawPet(screen, pet, ticks)
+		DrawPet(screen, pet, ticks, Scene{Mood: mood, Wellness: wellness, Hour: time.Now().Hour()})
 		DrawSpeechBubble(screen, speech, pet)
 	}
 }
@@ -385,8 +396,7 @@ func Run(cfg Config) error {
 		return err
 	}
 
-	// 20 FPS throttling when idle to maintain <1.5% CPU
-	app.throttleSleep = 20 * time.Millisecond
+	// 20 TPS when idle keeps CPU low; games raise it to 60 (see launchGameLocked).
 	ebiten.SetWindowSize(240, 340)
 	ebiten.SetWindowTitle("PromptPet")
 	ebiten.SetTPS(20)

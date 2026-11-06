@@ -21,8 +21,16 @@ func hexToRGBA(c uint32, alpha uint8) color.RGBA {
 	}
 }
 
-// DrawPet renders the animated mascot inside the LCD screen area.
-func DrawPet(screen *ebiten.Image, pet companion.PetDef, ticks int64) {
+// Scene carries the work-rhythm context the pet reacts to visually.
+type Scene struct {
+	Mood     companion.RhythmMood
+	Wellness companion.WellnessType // active reminder, or WellnessNone
+	Hour     int                    // local hour 0-23, drives day/night props
+}
+
+// DrawPet renders the animated mascot inside the LCD screen area,
+// followed by the scene props (mood, reminder, time of day) around it.
+func DrawPet(screen *ebiten.Image, pet companion.PetDef, ticks int64, scene Scene) {
 	centerX := float32(120)
 	centerY := float32(152)
 
@@ -71,6 +79,8 @@ func DrawPet(screen *ebiten.Image, pet companion.PetDef, ticks int64) {
 		vector.DrawFilledCircle(screen, cx-14, cy+5, 4, blushClr, true)
 		vector.DrawFilledCircle(screen, cx+14, cy+5, 4, blushClr, true)
 	}
+
+	drawScene(screen, scene, ticks, cx, cy)
 }
 
 // 1. Usagi: Dumpling Bunny

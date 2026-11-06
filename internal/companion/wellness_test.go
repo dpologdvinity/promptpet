@@ -129,8 +129,8 @@ func TestRhythmEvaluationGitMilestone(t *testing.T) {
 		{Timestamp: now.Unix(), ExitCode: 0, GitAction: "commit", CommitCount: 5},
 	}
 	mood, speech := s.EvaluateRhythm(evCommit5, now)
-	if mood != companion.MoodCheer {
-		t.Errorf("expected MoodCheer, got %v", mood)
+	if mood != companion.MoodFanfare {
+		t.Errorf("expected MoodFanfare, got %v", mood)
 	}
 	if speech != "5th commit! Amazing progress!" {
 		t.Errorf("expected '5th commit! Amazing progress!', got %q", speech)
@@ -141,8 +141,8 @@ func TestRhythmEvaluationGitMilestone(t *testing.T) {
 		{Timestamp: now.Unix(), ExitCode: 0, GitAction: "commit", CommitCount: 10},
 	}
 	mood, speech = s.EvaluateRhythm(evCommit10, now)
-	if mood != companion.MoodCheer {
-		t.Errorf("expected MoodCheer, got %v", mood)
+	if mood != companion.MoodFanfare {
+		t.Errorf("expected MoodFanfare, got %v", mood)
 	}
 	if speech != "10th commit! Amazing progress!" {
 		t.Errorf("expected '10th commit! Amazing progress!', got %q", speech)
