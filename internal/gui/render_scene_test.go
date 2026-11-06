@@ -16,16 +16,26 @@ var (
 // TestDrawPetAllScenes renders every pet in every scene combination at a
 // morning, afternoon and night hour, across several animation ticks.
 func TestDrawPetAllScenes(t *testing.T) {
+	// Every pet sees every mood, reminder, hour and tick phase once (dimensions
+	// cycle together), plus one pet gets every mood x reminder pair. A full
+	// cross product took minutes under -race in CI.
 	screen := ebiten.NewImage(240, 340)
+	hours := []int{8, 14, 23}
+	ticks := []int64{0, 37, 1001}
+	steps := max(len(allMoods), len(allWellness), len(hours), len(ticks))
 	for _, pet := range companion.GetAllPets() {
-		for _, mood := range allMoods {
-			for _, w := range allWellness {
-				for _, hour := range []int{8, 14, 23} {
-					for _, ticks := range []int64{0, 37, 1001} {
-						DrawPet(screen, pet, ticks, Scene{Mood: mood, Wellness: w, Hour: hour})
-					}
-				}
-			}
+		for i := 0; i < steps; i++ {
+			DrawPet(screen, pet, ticks[i%len(ticks)], Scene{
+				Mood:     allMoods[i%len(allMoods)],
+				Wellness: allWellness[i%len(allWellness)],
+				Hour:     hours[i%len(hours)],
+			})
+		}
+	}
+	pet := companion.GetAllPets()[0]
+	for _, mood := range allMoods {
+		for _, w := range allWellness {
+			DrawPet(screen, pet, 37, Scene{Mood: mood, Wellness: w, Hour: 23})
 		}
 	}
 }

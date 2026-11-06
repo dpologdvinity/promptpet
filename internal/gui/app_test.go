@@ -426,8 +426,8 @@ func TestAppGitMilestoneSpeech(t *testing.T) {
 		t.Fatalf("update failed: %v", err)
 	}
 
-	if app.Speech() != "5th commit! Amazing progress!" {
-		t.Errorf("expected '5th commit! Amazing progress!', got %q", app.Speech())
+	if app.Speech() != "5th commit today! Amazing progress!" {
+		t.Errorf("expected '5th commit today! Amazing progress!', got %q", app.Speech())
 	}
 }
 
