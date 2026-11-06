@@ -462,7 +462,8 @@ func cornerPosition(monitorW, monitorH int) (x, y int) {
 	return max(0, monitorW-240-marginX), max(0, monitorH-340-marginY)
 }
 
-func isHeadless() bool {
+// Headless reports whether no display server is available for the companion window.
+func Headless() bool {
 	if os.Getenv("PROMPTPET_HEADLESS") == "1" {
 		return true
 	}
@@ -474,7 +475,7 @@ func isHeadless() bool {
 
 // Run configures the Ebitengine window and launches the companion application loop.
 func Run(cfg Config) error {
-	if isHeadless() {
+	if Headless() {
 		return ErrHeadless
 	}
 

@@ -28,6 +28,7 @@ type Deps struct {
 	Stdout  io.Writer
 	Stderr  io.Writer
 	RunGUI  func(gui.Config) error
+	Detach  func(args []string) error // start promptpet with args as a background session
 }
 
 func RealDeps(version string) Deps {
@@ -42,6 +43,7 @@ func RealDeps(version string) Deps {
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
 		RunGUI:  gui.Run,
+		Detach:  realDetach,
 	}
 }
 func realSpawn(worktree string) error {
@@ -57,6 +59,21 @@ func realSpawn(worktree string) error {
 	return cmd.Process.Release()
 }
 
+// realDetach re-runs this binary with args in a new session, detached from the terminal,
+// so it survives the shell closing.
+func realDetach(args []string) error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(exe, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err = cmd.Start(); err != nil {
+		return err
+	}
+	return cmd.Process.Release()
+}
+
 const usage = `promptpet - a tiny pet that lives in your shell prompt
 
 usage:
@@ -65,7 +82,7 @@ usage:
   promptpet pet [name|list]  pet your pet, switch, or list companion pets
   promptpet init <shell>     print the shell hook (zsh, bash, fish)
   promptpet completion <sh>  print shell completions (zsh, bash, fish)
-  promptpet gui              launch companion mini-window
+  promptpet gui [--detach]   launch companion mini-window (--detach: run in background)
   promptpet games            list mini-games and high scores
   promptpet play             play with your pet
   promptpet name <name>      rename your pet
@@ -144,6 +161,9 @@ func Run(args []string, extra ...any) int {
 	}
 	if d.RunGUI == nil {
 		d.RunGUI = gui.Run
+	}
+	if d.Detach == nil {
+		d.Detach = realDetach
 	}
 	if d.Rand == nil {
 		d.Rand = rand.New(rand.NewPCG(1, 2))
@@ -232,7 +252,7 @@ func Run(args []string, extra ...any) int {
 			card := pet.Card(s, mood, d.Now())
 			sp := statePath(d)
 			if cs, err := companion.LoadState(sp); err == nil && cs.ActivePet != "" {
-				card += fmt.Sprintf("\nCompanion: %s (Hearts: %d)\n", cs.ActivePet, cs.FriendshipHearts)
+				card += companionStatus(cs)
 			}
 			s.Message = ""
 			return card

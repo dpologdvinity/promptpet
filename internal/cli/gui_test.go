@@ -354,3 +354,84 @@ func TestPromptExitEqualSyntax(t *testing.T) {
 		t.Errorf("expected exit code 42, got %d", events[0].ExitCode)
 	}
 }
+
+func TestStatusShowsHighScoresAndCasing(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("PROMPTPET_HOME", tmpDir)
+	sp := filepath.Join(tmpDir, "companion.json")
+	t.Setenv("PROMPTPET_COMPANION_STATE_FILE", sp)
+
+	s := companion.NewDefaultState()
+	s.Casing = "mint"
+	s.HighScores["Balloon Pop"] = 1100
+	if err := companion.SaveState(sp, s); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errOut bytes.Buffer
+	if code := cli.Run([]string{"status"}, &out, &errOut); code != 0 {
+		t.Fatalf("expected 0 exit code, got %d: %s", code, errOut.String())
+	}
+	for _, want := range []string{"Casing: mint", "Balloon Pop", "1100", "Snack Catch"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("status output missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
+func TestPetSwitchRefusesWhenLocked(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("PROMPTPET_HOME", tmpDir)
+	sp := filepath.Join(tmpDir, "companion.json")
+	t.Setenv("PROMPTPET_COMPANION_STATE_FILE", sp)
+
+	unlock, err := store.Lock(tmpDir, "companion.lock", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+
+	var out, errOut bytes.Buffer
+	if code := cli.Run([]string{"pet", "kochi"}, &out, &errOut); code == 0 {
+		t.Fatal("expected non-zero exit when the companion lock is held")
+	}
+	if s, _ := companion.LoadState(sp); s.ActivePet == "kochi" {
+		t.Fatal("state must not be written without the lock")
+	}
+}
+
+func TestGUIDetach(t *testing.T) {
+	tmpDir := t.TempDir()
+	var out, errOut bytes.Buffer
+	d := cli.RealDeps("dev")
+	d.Stdout, d.Stderr = &out, &errOut
+	d.Getenv = func(k string) string {
+		if k == "PROMPTPET_HOME" {
+			return tmpDir
+		}
+		return os.Getenv(k)
+	}
+	d.RunGUI = func(gui.Config) error { t.Fatal("--detach must not run the window in-process"); return nil }
+	var detached []string
+	d.Detach = func(args []string) error { detached = args; return nil }
+	t.Setenv("PROMPTPET_HEADLESS", "")
+	t.Setenv("DISPLAY", ":0")
+
+	if code := cli.Run([]string{"gui", "--detach"}, d); code != 0 {
+		t.Fatalf("expected 0, got %d: %s", code, errOut.String())
+	}
+	if strings.Join(detached, " ") != "gui" {
+		t.Fatalf("expected detached child args [gui], got %v", detached)
+	}
+
+	// Headless: refuse up front instead of spawning a child that dies silently.
+	detached = nil
+	t.Setenv("PROMPTPET_HEADLESS", "1")
+	if code := cli.Run([]string{"gui", "--detach"}, d); code != 1 || detached != nil {
+		t.Fatalf("expected headless refusal, got code %d detached %v", code, detached)
+	}
+
+	if code := cli.Run([]string{"gui", "--bogus"}, d); code == 0 {
+		t.Fatal("expected usage error for unknown gui flag")
+	}
+}

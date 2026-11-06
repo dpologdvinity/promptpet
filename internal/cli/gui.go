@@ -39,6 +39,22 @@ func eventPath(d Deps) string {
 }
 
 func runGUI(args []string, d Deps) int {
+	if len(args) > 0 {
+		if len(args) != 1 || (args[0] != "--detach" && args[0] != "-d") {
+			return usageError(d, "usage: promptpet gui [--detach]")
+		}
+		// Check here: a detached child has no terminal to report a missing display.
+		if gui.Headless() {
+			fmt.Fprintln(d.Stderr, "promptpet gui requires a graphical display (X11/Wayland/WSLg)")
+			return 1
+		}
+		if err := d.Detach([]string{"gui"}); err != nil {
+			return runtimeError(d, err)
+		}
+		fmt.Fprintln(d.Stdout, "promptpet companion started in the background (press Q in its window to quit).")
+		return 0
+	}
+
 	cfg := gui.Config{
 		StatePath: statePath(d),
 		EventPath: eventPath(d),
@@ -120,10 +136,12 @@ func runPetSwitch(name string, d Deps) int {
 
 	sp := statePath(d)
 	dir := filepath.Dir(sp)
+	// Writes must hold the lock; reads (list, games) may proceed without it since saves are atomic.
 	unlock, lockErr := store.Lock(dir, "companion.lock", 200*time.Millisecond)
-	if lockErr == nil {
-		defer unlock()
+	if lockErr != nil {
+		return runtimeError(d, fmt.Errorf("companion state is busy, try again: %w", lockErr))
 	}
+	defer unlock()
 	s, err := companion.LoadState(sp)
 	if err != nil {
 		s = companion.NewDefaultState()
@@ -175,4 +193,20 @@ func runGames(args []string, d Deps) int {
 		fmt.Fprintf(d.Stdout, "  %d. %-13s - Controls: %-36s - High Score: %d\n", gi.ID, gi.Name, gi.Controls, score)
 	}
 	return 0
+}
+
+// companionStatus renders the companion section of `promptpet status`:
+// active pet, hearts, casing and every mini-game's high score.
+func companionStatus(cs *companion.State) string {
+	casing := cs.Casing
+	if casing == "" {
+		casing = companion.Casings[0]
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "\nCompanion: %s (Hearts: %d, Casing: %s)\n", cs.ActivePet, cs.FriendshipHearts, casing)
+	b.WriteString("High scores:\n")
+	for _, gi := range allGameInfos {
+		fmt.Fprintf(&b, "  %-13s %d\n", gi.Name, cs.HighScores[gi.Name])
+	}
+	return b.String()
 }
