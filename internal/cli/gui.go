@@ -38,6 +38,11 @@ func eventPath(d Deps) string {
 	return event.GetEventFilePath()
 }
 
+// lockCompanion takes companion.lock next to the companion state file.
+func lockCompanion(d Deps) (func(), error) {
+	return store.Lock(filepath.Dir(statePath(d)), "companion.lock", 200*time.Millisecond)
+}
+
 func runGUI(args []string, d Deps) int {
 	if len(args) > 0 {
 		if len(args) != 1 || (args[0] != "--detach" && args[0] != "-d") {
@@ -48,12 +53,27 @@ func runGUI(args []string, d Deps) int {
 			fmt.Fprintln(d.Stderr, "promptpet gui requires a graphical display (X11/Wayland/WSLg)")
 			return 1
 		}
+		unlock, err := lockCompanion(d)
+		if err != nil {
+			fmt.Fprintln(d.Stderr, "promptpet: the companion window is already running")
+			return 1
+		}
+		unlock() // only a pre-check; the detached window takes the lock itself
 		if err := d.Detach([]string{"gui"}); err != nil {
 			return runtimeError(d, err)
 		}
 		fmt.Fprintln(d.Stdout, "promptpet companion started in the background (press Q in its window to quit).")
 		return 0
 	}
+
+	// The window owns companion.json while open: it keeps the state in memory and
+	// would overwrite CLI edits, so hold the lock for its whole lifetime.
+	unlock, err := lockCompanion(d)
+	if err != nil {
+		fmt.Fprintln(d.Stderr, "promptpet: the companion window is already running")
+		return 1
+	}
+	defer unlock()
 
 	cfg := gui.Config{
 		StatePath: statePath(d),
@@ -135,11 +155,10 @@ func runPetSwitch(name string, d Deps) int {
 	}
 
 	sp := statePath(d)
-	dir := filepath.Dir(sp)
 	// Writes must hold the lock; reads (list, games) may proceed without it since saves are atomic.
-	unlock, lockErr := store.Lock(dir, "companion.lock", 200*time.Millisecond)
+	unlock, lockErr := lockCompanion(d)
 	if lockErr != nil {
-		return runtimeError(d, fmt.Errorf("companion state is busy, try again: %w", lockErr))
+		return runtimeError(d, errors.New("the companion window is open; switch pets there with Tab, or close it first"))
 	}
 	defer unlock()
 	s, err := companion.LoadState(sp)

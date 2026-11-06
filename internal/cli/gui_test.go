@@ -500,3 +500,45 @@ func TestPromptRepoSwitchNoStaleMilestone(t *testing.T) {
 		}
 	}
 }
+
+// TestGUIHoldsCompanionLock: while the window runs it owns companion.json, so
+// `pet <name>` is refused (the window would overwrite it) and a second window can't start.
+func TestGUIHoldsCompanionLock(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("PROMPTPET_HOME", tmpDir)
+	sp := filepath.Join(tmpDir, "companion.json")
+	t.Setenv("PROMPTPET_COMPANION_STATE_FILE", sp)
+
+	var out, errOut bytes.Buffer
+	d := cli.RealDeps("dev")
+	d.Stdout, d.Stderr = &out, &errOut
+	d.Getenv = os.Getenv
+
+	var petCode, secondCode int
+	var petErr string
+	d.RunGUI = func(gui.Config) error {
+		var pOut, pErr bytes.Buffer
+		petCode = cli.Run([]string{"pet", "kochi"}, &pOut, &pErr)
+		petErr = pErr.String()
+
+		inner := d
+		inner.RunGUI = func(gui.Config) error { t.Error("second window must not start"); return nil }
+		secondCode = cli.Run([]string{"gui"}, inner)
+		return nil
+	}
+	if code := cli.Run([]string{"gui"}, d); code != 0 {
+		t.Fatalf("gui exited %d: %s", code, errOut.String())
+	}
+	if petCode == 0 || !strings.Contains(petErr, "companion window") {
+		t.Errorf("pet switch while window open: code %d, stderr %q", petCode, petErr)
+	}
+	if secondCode == 0 {
+		t.Error("second gui should fail while the first holds the lock")
+	}
+
+	// After the window closes the lock is released and switching works.
+	var pOut, pErr bytes.Buffer
+	if code := cli.Run([]string{"pet", "kochi"}, &pOut, &pErr); code != 0 {
+		t.Fatalf("pet switch after window closed: %d %s", code, pErr.String())
+	}
+}
