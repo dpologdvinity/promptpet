@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"github.com/dpologdvinity/promptpet/internal/event"
 	"github.com/dpologdvinity/promptpet/internal/store"
 	"io"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -143,5 +145,74 @@ func TestPromptLockBusyDoesNotRecoverCorruptState(t *testing.T) {
 	backups, err := filepath.Glob(path + ".corrupt-*")
 	if err != nil || len(backups) != 0 {
 		t.Fatalf("backups=%v err=%v", backups, err)
+	}
+}
+
+// promptEvents runs `promptpet prompt` with args in d and returns every event
+// appended to the test's PROMPTPET_EVENT_FILE so far.
+func promptEvents(t *testing.T, d *Deps, args ...string) []event.Event {
+	t.Helper()
+	evFile := filepath.Join(d.Getenv("PROMPTPET_HOME"), "events-test.jsonl")
+	if d.Getenv("PROMPTPET_EVENT_FILE") == "" {
+		d.Getenv = withEnv(d.Getenv, "PROMPTPET_EVENT_FILE", evFile)
+	}
+	if code := Run(append([]string{"prompt"}, args...), *d); code != 0 {
+		t.Fatalf("prompt exit %d", code)
+	}
+	evs, err := event.ReadEventsSince(evFile, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return evs
+}
+
+func TestPromptDurationFlag(t *testing.T) {
+	d, _, _ := testDeps(t)
+	promptEvents(t, &d, "--exit", "0", "--duration-ms", "1500")
+	promptEvents(t, &d, "--exit=2", "--duration-ms=42")
+	promptEvents(t, &d, "--exit", "0")
+	evs := promptEvents(t, &d, "--exit", "0", "--duration-ms=-5")
+	if len(evs) != 4 {
+		t.Fatalf("events: %+v", evs)
+	}
+	if evs[0].DurationMs != 1500 || evs[1].DurationMs != 42 || evs[1].ExitCode != 2 || evs[2].DurationMs != 0 || evs[3].DurationMs != 0 {
+		t.Fatalf("events: %+v", evs)
+	}
+	raw, _ := os.ReadFile(filepath.Join(d.Getenv("PROMPTPET_HOME"), "events-test.jsonl"))
+	if lines := strings.Split(string(raw), "\n"); strings.Contains(lines[2], "duration_ms") {
+		t.Fatalf("unknown duration must be omitted: %s", lines[2])
+	}
+}
+
+func TestPromptGitBranchAndMergeFireOnce(t *testing.T) {
+	d, _, _ := testDeps(t)
+	wt := t.TempDir()
+	gd := filepath.Join(wt, ".git")
+	os.MkdirAll(filepath.Join(gd, "logs", "refs", "heads"), 0o755)
+	os.WriteFile(filepath.Join(gd, "HEAD"), []byte("ref: refs/heads/feat\n"), 0o644)
+	line := func(msg string) string {
+		return "a b U <u@x> " + strconv.FormatInt(t0.Unix(), 10) + " +0000\t" + msg + "\n"
+	}
+	os.WriteFile(filepath.Join(gd, "logs", "refs", "heads", "feat"), []byte(line("branch: Created from main")), 0o644)
+	headLog := line("commit: one") + line("checkout: moving from main to feat")
+	os.WriteFile(filepath.Join(gd, "logs", "HEAD"), []byte(headLog), 0o644)
+	d.Getwd = func() (string, error) { return wt, nil }
+
+	promptEvents(t, &d, "--exit", "0")
+	promptEvents(t, &d, "--exit", "0") // reflog unchanged: must not refire
+	headLog += line("merge other: Merge made by the 'ort' strategy.")
+	os.WriteFile(filepath.Join(gd, "logs", "HEAD"), []byte(headLog), 0o644)
+	evs := promptEvents(t, &d, "--exit", "0")
+	if len(evs) != 3 {
+		t.Fatalf("events: %+v", evs)
+	}
+	if evs[0].GitAction != "branch" || evs[0].GitBranch != "feat" || evs[0].CommitCount != 1 {
+		t.Fatalf("first: %+v", evs[0])
+	}
+	if evs[1].GitAction != "" {
+		t.Fatalf("refired: %+v", evs[1])
+	}
+	if evs[2].GitAction != "merge" || evs[2].GitBranch != "feat" {
+		t.Fatalf("merge: %+v", evs[2])
 	}
 }

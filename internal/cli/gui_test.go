@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -273,7 +274,8 @@ func TestPromptLoggingEventGitMilestone(t *testing.T) {
 	// logs/HEAD with 5 commits
 	var logContent strings.Builder
 	for i := 1; i <= 5; i++ {
-		logContent.WriteString("0000000 1111111 User <u@example.com> 1234567890 +0000\tcommit: commit " + string(rune('0'+i)) + "\n")
+		// CommitCount counts today's commits, so stamp them now.
+		logContent.WriteString("0000000 1111111 User <u@example.com> " + strconv.FormatInt(time.Now().Unix(), 10) + " +0000\tcommit: commit " + string(rune('0'+i)) + "\n")
 	}
 	if err := os.WriteFile(filepath.Join(logsDir, "HEAD"), []byte(logContent.String()), 0o644); err != nil {
 		t.Fatal(err)

@@ -13,11 +13,16 @@ import (
 	"github.com/dpologdvinity/promptpet/internal/store"
 )
 
+// Event is one line of the events.jsonl stream the GUI companion tails.
 type Event struct {
-	Timestamp   int64  `json:"timestamp"`
-	Type        string `json:"type"` // "command_finish", "git_commit", "git_branch"
-	ExitCode    int    `json:"exit_code"`
-	DurationMs  int64  `json:"duration_ms"`
+	Timestamp int64  `json:"timestamp"`
+	Type      string `json:"type"` // "command_finish", "git_commit", "git_branch"
+	ExitCode  int    `json:"exit_code"`
+	// DurationMs is the last command's wall time as measured by the shell
+	// hook; omitted when the hook could not measure it.
+	DurationMs int64 `json:"duration_ms,omitempty"`
+	// GitAction is "commit", "branch" or "merge" when that git milestone
+	// happened since the previous prompt.
 	GitAction   string `json:"git_action,omitempty"`
 	GitBranch   string `json:"git_branch,omitempty"`
 	CommitCount int    `json:"commit_count,omitempty"`

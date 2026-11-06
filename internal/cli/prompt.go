@@ -13,25 +13,39 @@ import (
 	"github.com/dpologdvinity/promptpet/internal/store"
 )
 
+// parsePromptArgs reads the hook-supplied "--exit N" and "--duration-ms N"
+// (or "--flag=N") arguments. Missing or invalid values yield -1 for exit
+// (unknown) and 0 for duration (unknown, omitted from the event).
+func parsePromptArgs(args []string) (exit int, durationMs int64) {
+	exit = -1
+	for i := 0; i < len(args); i++ {
+		name, val, hasVal := strings.Cut(args[i], "=")
+		if name != "--exit" && name != "--duration-ms" {
+			continue
+		}
+		if !hasVal && i+1 < len(args) {
+			i++
+			val = args[i]
+		}
+		if name == "--exit" {
+			if n, err := strconv.Atoi(val); err == nil {
+				exit = n
+			}
+		} else if n, err := strconv.ParseInt(val, 10, 64); err == nil && n >= 0 {
+			durationMs = n
+		}
+	}
+	return exit, durationMs
+}
+
+// runPrompt implements `promptpet prompt`: it advances the pet, logs a
+// command_finish event (with any git milestone that happened since the
+// previous prompt) and prints the prompt segment.
 func runPrompt(args []string, d Deps) int {
 	if d.Getenv("PROMPTPET_DISABLE") != "" {
 		return 0
 	}
-	exit := -1
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--exit" && i+1 < len(args) {
-			if n, err := strconv.Atoi(args[i+1]); err == nil {
-				exit = n
-			}
-			break
-		}
-		if strings.HasPrefix(args[i], "--exit=") {
-			if n, err := strconv.Atoi(strings.TrimPrefix(args[i], "--exit=")); err == nil {
-				exit = n
-			}
-			break
-		}
-	}
+	exit, durationMs := parsePromptArgs(args)
 	now := d.Now()
 	dir, err := store.Dir(d.Getenv)
 	if err != nil {
@@ -72,13 +86,13 @@ func runPrompt(args []string, d Deps) int {
 			foundRepo = true
 			repoWt = wt
 			repoGd = gd
+			// The reflog signature changes only after a git operation, so a
+			// milestone fires once, on the first prompt after it happened.
 			if sig, ok := repo.Sig(gd); ok && sig != s.Repo {
-				info := repo.GetInfo(gd)
+				info := repo.GetInfo(gd, now)
 				gitBranch = info.Branch
 				commitCount = info.CommitCount
-				if info.LastAction == "commit" {
-					gitAction = "commit"
-				}
+				gitAction = info.LastAction
 			}
 		}
 	}
@@ -88,6 +102,7 @@ func runPrompt(args []string, d Deps) int {
 		ev := event.Event{
 			Type:        "command_finish",
 			ExitCode:    exit,
+			DurationMs:  durationMs,
 			Timestamp:   time.Now().Unix(),
 			GitAction:   gitAction,
 			GitBranch:   gitBranch,
