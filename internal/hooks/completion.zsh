@@ -43,6 +43,9 @@ _promptpet() {
         prompt)
           _arguments '--exit[exit code of last command]:exit code:'
           ;;
+        gui)
+          _arguments '--detach[run the companion window in the background]'
+          ;;
       esac
       ;;
   esac

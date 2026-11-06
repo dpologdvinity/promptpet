@@ -13,5 +13,6 @@ complete -c promptpet -n "__fish_seen_subcommand_from init completion" -a "zsh b
 complete -c promptpet -n "__fish_seen_subcommand_from species" -a "cat dragon blob"
 complete -c promptpet -n "__fish_seen_subcommand_from pet" -a "list usagi kochi puff mochi spook pippin gromit boba"
 complete -c promptpet -n "__fish_seen_subcommand_from prompt" -l exit -d "exit code of last command"
+complete -c promptpet -n "__fish_seen_subcommand_from gui" -l detach -d "run the companion window in the background"
 complete -c promptpet -s h -l help -d "show help"
 complete -c promptpet -s V -l version -d "print version"

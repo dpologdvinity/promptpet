@@ -26,6 +26,10 @@ _promptpet_completions() {
       COMPREPLY=( $(compgen -W "--exit" -- "$cur") )
       return 0
       ;;
+    gui)
+      COMPREPLY=( $(compgen -W "--detach" -- "$cur") )
+      return 0
+      ;;
   esac
 
   if [ "$COMP_CWORD" -eq 1 ]; then
