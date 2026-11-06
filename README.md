@@ -90,6 +90,7 @@ The companion window brings your shell pet to life in a dedicated retro virtual 
 - **Ultra-Lightweight & Smooth:** Handcrafted vector art rendered via Ebitengine. Runs at 20 TPS / ~1% CPU when idle; switches to 60 TPS during mini-gameplay for fluid responsiveness.
 - **Real-Time Shell Awareness:** Reacts to shell successes, command errors, and work velocity via asynchronous event IPC, with visual props: sparkles when you are in the flow, confetti on success, a cup of tea and a band-aid after an error, dozing "zzz" when idle, a morning coffee and a night-time nightcap.
 - **Casing Colours:** Lavender, Coral, Mint or Midnight; your choice is saved.
+- **Git Milestone Fanfare:** Creating a branch (`git checkout -b` / `git switch -c`), merging (`git merge`, a merge `git pull`, or concluding a conflicted merge), and every 5th commit of the day trigger a celebration. Each milestone fires once, on the first prompt after it happens; amends don't count as new commits.
 - **Mini-Window Controls:**
   - `Tab`: Cycle through the 8 companion pets.
   - `1` – `8`: Launch one of the 8 keyboard mini-games directly.
@@ -106,7 +107,7 @@ The companion window brings your shell pet to life in a dedicated retro virtual 
 
 `promptpet` is architected so that the shell prompt and GUI window coexist seamlessly with zero interference:
 
-- **Guaranteed Fast Prompt Latency (<5 ms):** The shell prompt path only appends a small event record (`command_finish`, exit code, timestamp) to `events.jsonl`. It never waits on GUI locks or blocks terminal execution. Benchmarks confirm prompt execution averages ~1.2 ms/op.
+- **Guaranteed Fast Prompt Latency (<5 ms):** The shell prompt path only appends a small event record (`command_finish`, exit code, command duration, timestamp, and any git milestone) to `events.jsonl`. The shell hooks time each command without spawning processes (`$EPOCHREALTIME` in zsh and bash 5+, `$CMD_DURATION` in fish); older bash omits the duration. It never waits on GUI locks or blocks terminal execution. Benchmarks confirm prompt execution averages ~1.2 ms/op.
 - **Asynchronous Event IPC:** The GUI process polls `events.jsonl` once per second (`1 Hz`), maintaining an incremental byte offset cursor. It seeks and streams new terminal events without file contention. The event log automatically rotates at 2 MB to prevent unbounded disk growth.
 - **Independent State Isolation:** Prompt vitals and feeding live in `state.json`, while companion pet preferences, wellness timestamps, and mini-game high scores reside in `companion.json`.
 - **Headless Detection:** If launched without an active X11, Wayland, or desktop display server, `promptpet gui` exits cleanly with a helpful error message instead of crashing.

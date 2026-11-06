@@ -19,7 +19,7 @@
 ```mermaid
 graph TD
     subgraph Shell Prompt Context [Interactive Shell Execution]
-        Hook["Shell Hook (zsh / bash / fish)"] -->|"promptpet prompt --exit $?"| CLI["CLI Router (internal/cli)"]
+        Hook["Shell Hook (zsh / bash / fish)"] -->|"promptpet prompt --exit $? --duration-ms=N"| CLI["CLI Router (internal/cli)"]
         User["User Command (pet, games, gui)"] -->|"promptpet [cmd]"| CLI
     end
 
@@ -116,12 +116,21 @@ graph TD
 ### 6. `internal/hooks`: Shell Integrations
 - Embedded shell hook templates for `bash`, `zsh`, and `fish`.
 - Hooks intercept exit statuses (`$?` or `$status`) and inject `PROMPTPET_SEGMENT` into standard prompt structures (`PS1`, `PROMPT`, `fish_prompt`) without mutating user exit codes.
+- Hooks also pass the last command's wall time as `--duration-ms=N`, measured without forking: zsh records `$EPOCHREALTIME` in a `preexec` hook; bash 5+ records it from a side-effect-only `PS0` expansion; fish forwards `$CMD_DURATION`. The flag is omitted when nothing ran since the previous prompt (zsh/bash) or the shell cannot measure it (bash < 5).
 
 ### 7. `internal/event`: Event IPC Pipeline
 - **Format:** Append-only line-delimited JSON (`events.jsonl`) storing discrete events:
   ```json
-  {"type":"command_finish","exit_code":0,"timestamp":1729768920}
+  {"type":"command_finish","exit_code":0,"duration_ms":320,"timestamp":1729768920,"git_action":"commit","git_branch":"main","commit_count":5}
   ```
+  `duration_ms`, `git_action`, `git_branch` and `commit_count` are omitted when unknown/empty.
+- **Git milestones (`internal/repo`):** The prompt re-reads `.git/logs/HEAD` (directly, no `git` subprocess) only when its size/mtime signature changed since the last prompt, so each milestone is reported once. The newest reflog entry is classified as `git_action`:
+  - `merge`: `merge <x>: …` (incl. fast-forward), `commit (merge): …`, or `pull…: Merge made by…`
+  - `commit`: `commit: …` or `commit (initial): …`
+  - `branch`: `checkout: moving from X to Y` where `logs/refs/heads/Y` (in the common dir for linked worktrees) starts with `branch: Created from` within 2 s
+  - anything else (amend, reset, rebase, plain checkout, fast-forward pull): no action
+  
+  `commit_count` counts `commit`, `commit (initial)` and `commit (merge)` reflog entries dated on the current local day.
 - **Prompt Producer (`AppendEventToFile`, `LogEvent`):** Appends events with `os.O_APPEND|os.O_CREATE|os.O_WRONLY` (0600 mode). Overhead is under 100 microseconds, ensuring prompt latency stays well below budget.
 - **GUI Consumer (`ReadEventsSince`):** Reads events whose `timestamp >= sinceTs`, enabling incremental event streaming with zero cursor locking.
 - **Isolation:** Write errors in `events.jsonl` are silently dropped in the prompt path to guarantee shell prompt execution is never interrupted or delayed.
@@ -132,7 +141,8 @@ graph TD
 - **Rhythm Engine (`wellness.go`):** Evaluates command frequency and exit codes over recent windows:
   - High burst velocity $\rightarrow$ `energetic`
   - All recent successes $\rightarrow$ `cheer`
-  - Recent non-zero exit errors $\rightarrow$ `sympathy`
+  - Recent non-zero exit errors $\rightarrow$ `sympathy` (takes priority over git milestones)
+  - New branch, merge, or every 5th commit of the day $\rightarrow$ `fanfare` (other commits $\rightarrow$ `cheer`)
   - Idle periods $\rightarrow$ `resting` (contextualized by time of day)
 - **Gentle Wellness Reminders:**
   - Water reminder: 45 minute interval
