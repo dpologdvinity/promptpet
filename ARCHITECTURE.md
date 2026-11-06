@@ -105,6 +105,7 @@ graph TD
       Getwd   func() (string, error)
       Spawn   func(worktree string) error
       RunGUI  func(gui.Config) error
+      Detach  func(args []string) error // gui --detach: re-run in a new session
       Stdout  io.Writer
       Stderr  io.Writer
   }
@@ -140,8 +141,10 @@ graph TD
   - Anti-flooding algorithm staggers overdue reminders to prevent reminder spamming.
 
 ### 9. `internal/gui`: Handheld Virtual Device Renderer
-- **Retro Handheld Chassis (`device.go`):** Renders curved 240×340 plastic shell with dual speaker grilles, glass LCD bezel, LCD display, and A/B/C action buttons.
-- **Vector Pet Graphics (`render_pet.go`):** Dynamic vector pet avatars with 60 FPS animation ticks (idle breathing bounce, synchronized eye blinking, and expressive blushing).
+- **Window (`app.go` `Run`):** Floating (always-on-top), undecorated 240×340 window placed at the monitor's bottom-right corner. Dragging the casing moves it (`pollMouseLocked`); `Q` quits.
+- **Retro Handheld Chassis (`device.go`):** Renders curved 240×340 plastic shell in the saved casing colour (`companion.Casings`: lavender, coral, mint, midnight), glass LCD bezel, LCD display, and A/B/C face buttons. `faceButtons` holds the button geometry shared by drawing and click hit-testing (`buttonAt`).
+- **Vector Pet Graphics (`render_pet.go`):** Vector pet avatars, each with its own tick-driven idle animation.
+- **Scene Props (`render_scene.go`):** `DrawPet` takes a `Scene` (rhythm mood, active wellness reminder, local hour) and draws props: sparkles, zzz/book, confetti, tea/band-aid, fanfare star burst, water glass, stretch arrows, binoculars, nightcap, morning coffee.
 - **Speech Bubble System:** Dynamic speech bubble with rounded borders, pointer tail, and text wrapping.
 - **Headless Detection:** Detects headless environments without active display servers (`DISPLAY` / `WAYLAND_DISPLAY`) and returns `gui.ErrHeadless` cleanly.
 
@@ -155,14 +158,15 @@ graph TD
       Draw(screen *ebiten.Image)
   }
   ```
+- **Face-button input (`input.go`):** Games read keys through `justPressed`/`pressed`, which also honour the clicked face button set by the app each tick (`SetVirtualButton`): A = Left/1, B = Space/2, C = Right/3.
 - **8 Mini-Games:**
   1. `SnackCatch`: Paddle-style basket catching falling snacks.
   2. `PuddleLeap`: Timing jump runner avoiding approaching puddles.
   3. `LookAway`: Eye-stretch reflex matching arrow directions.
   4. `RhythmDance`: 4-lane dancing note precision rhythm game.
-  5. `MemorySimon`: 3-quadrant pattern recognition and recall.
+  5. `MemorySimon`: 3-button pattern recall of a 3-to-5 step sequence.
   6. `WhackABug`: 3-hole pest reaction game with ladybug avoidance.
-  7. `BalloonPop`: Angle aiming dart shooter.
+  7. `BalloonPop`: Angle aiming dart shooter: pop 5 balloons with 6 darts.
   8. `WordSnack`: Keyboard letter typing matching drifting snack names.
 
 ---
@@ -178,5 +182,5 @@ graph TD
   - The GUI companion window limits event polling to 1 Hz (`lastEventPoll`), avoiding continuous disk reads.
   - Wellness checks run at 0.5 Hz (`lastWellness`).
 - **CPU & Power Throttling:**
-  - When idle in companion mode, the GUI throttles to 5 FPS / sleeps outside mutex locks, consuming <1% CPU.
-  - When a mini-game is active or user interaction occurs, the engine dynamically runs at full 20 FPS for responsive controls.
+  - When idle in companion mode, the GUI runs at 20 TPS (`ebiten.SetTPS(20)`), consuming ~1% CPU.
+  - While a mini-game is active, it runs at 60 TPS for responsive controls, dropping back to 20 on exit.
