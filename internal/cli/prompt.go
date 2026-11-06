@@ -86,13 +86,17 @@ func runPrompt(args []string, d Deps) int {
 			foundRepo = true
 			repoWt = wt
 			repoGd = gd
-			// The reflog signature changes only after a git operation, so a
-			// milestone fires once, on the first prompt after it happened.
+			// The reflog signature changes after a git operation, so a milestone
+			// fires once, on the first prompt after it happened. It also changes
+			// when cd-ing into another repo, so the action must be newer than the
+			// previous prompt or an old merge/branch there would replay.
 			if sig, ok := repo.Sig(gd); ok && sig != s.Repo {
 				info := repo.GetInfo(gd, now)
 				gitBranch = info.Branch
 				commitCount = info.CommitCount
-				gitAction = info.LastAction
+				if prev.IsZero() || info.LastActionAt >= prev.Unix() {
+					gitAction = info.LastAction
+				}
 			}
 		}
 	}

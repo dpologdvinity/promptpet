@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -435,5 +436,67 @@ func TestGUIDetach(t *testing.T) {
 
 	if code := cli.Run([]string{"gui", "--bogus"}, d); code == 0 {
 		t.Fatal("expected usage error for unknown gui flag")
+	}
+}
+
+// TestPromptRepoSwitchNoStaleMilestone: cd-ing into another repo changes the reflog
+// signature, but its newest reflog entry happened before the last prompt, so no
+// milestone may fire (and none on coming back either).
+func TestPromptRepoSwitchNoStaleMilestone(t *testing.T) {
+	tmpDir := t.TempDir()
+	evFile := filepath.Join(tmpDir, "events.jsonl")
+	t.Setenv("PROMPTPET_EVENT_FILE", evFile)
+	t.Setenv("PROMPTPET_HOME", tmpDir)
+
+	mkRepo := func(name, entry string, ts time.Time) string {
+		repoDir := filepath.Join(tmpDir, name)
+		gitDir := filepath.Join(repoDir, ".git")
+		if err := os.MkdirAll(filepath.Join(gitDir, "logs"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		line := "0000000 1111111 User <u@example.com> " + strconv.FormatInt(ts.Unix(), 10) + " +0000\t" + entry + "\n"
+		if err := os.WriteFile(filepath.Join(gitDir, "logs", "HEAD"), []byte(line), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return repoDir
+	}
+	repoA := mkRepo("a", "commit: fresh work", time.Now().Add(-10*time.Second))
+	repoB := mkRepo("b", "merge feat: Merge made by the 'ort' strategy.", time.Now().Add(-48*time.Hour))
+
+	cwd := repoA
+	d := cli.RealDeps("dev")
+	d.Stdout, d.Stderr = io.Discard, io.Discard
+	d.Getenv = func(k string) string {
+		switch k {
+		case "PROMPTPET_EVENT_FILE":
+			return evFile
+		case "PROMPTPET_HOME":
+			return tmpDir
+		}
+		return os.Getenv(k)
+	}
+	d.Getwd = func() (string, error) { return cwd, nil }
+
+	for _, dir := range []string{repoA, repoB, repoA} {
+		cwd = dir
+		if code := cli.Run([]string{"prompt", "--exit", "0"}, d); code != 0 {
+			t.Fatalf("prompt in %s failed: %d", dir, code)
+		}
+	}
+
+	events, err := event.ReadEventsSince(evFile, 0)
+	if err != nil || len(events) != 3 {
+		t.Fatalf("expected 3 events, got %d (err %v)", len(events), err)
+	}
+	if events[0].GitAction != "commit" {
+		t.Errorf("first prompt after a fresh commit should report it, got %q", events[0].GitAction)
+	}
+	for i, ev := range events[1:] {
+		if ev.GitAction != "" {
+			t.Errorf("event %d after repo switch: stale GitAction %q", i+1, ev.GitAction)
+		}
 	}
 }

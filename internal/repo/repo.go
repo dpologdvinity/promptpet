@@ -68,6 +68,8 @@ type Info struct {
 	// LastAction classifies the newest HEAD reflog entry as "commit",
 	// "branch" or "merge" ("" for anything else); see classify.
 	LastAction string
+	// LastActionAt is the Unix time of the newest HEAD reflog entry (0 if none).
+	LastActionAt int64
 	// CommitCount is the number of new commits recorded in the HEAD reflog
 	// on now's local calendar day (amends excluded; see isNewCommit).
 	CommitCount int
@@ -109,7 +111,12 @@ func GetInfo(gitDir string, now time.Time) Info {
 			}
 		}
 	}
+	if scanner.Err() != nil {
+		// A partial read could misreport the newest action or today's count; report none.
+		return Info{Branch: info.Branch}
+	}
 	info.LastAction = classify(gitDir, lastTs, lastMsg)
+	info.LastActionAt = lastTs
 	return info
 }
 
