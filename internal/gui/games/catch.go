@@ -101,10 +101,10 @@ func (g *SnackCatch) Update() (done bool, won bool, score int) {
 	g.ticks++
 
 	// 1. Controls
-	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
+	if pressed(ebiten.KeyArrowLeft) || pressed(ebiten.KeyA) {
 		g.petX -= g.petSpeed
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
+	if pressed(ebiten.KeyArrowRight) || pressed(ebiten.KeyD) {
 		g.petX += g.petSpeed
 	}
 

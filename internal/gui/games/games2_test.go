@@ -161,14 +161,24 @@ func TestBalloonPopLoss(t *testing.T) {
 	g := games.NewBalloonPop()
 	g.Init(p)
 
-	// Miss 4 balloons to lose
-	for i := 0; i < 4; i++ {
-		g.MissBalloon()
+	// DESIGN §5: pop 5 balloons with 6 darts. Fire all 6 into empty sky.
+	for i := 0; i < 6; i++ {
+		g.ShootDart()
+	}
+	if g.DartsLeft() != 0 {
+		t.Fatalf("expected 0 darts left after 6 shots, got %d", g.DartsLeft())
+	}
+	g.ShootDart() // a 7th shot must be refused
+	if g.DartsLeft() != 0 {
+		t.Fatalf("expected dart budget to stay at 0, got %d", g.DartsLeft())
 	}
 
-	done, won, _ := g.Update()
+	var done, won bool
+	for i := 0; i < 200 && !done; i++ {
+		done, won, _ = g.Update()
+	}
 	if !done || won {
-		t.Fatalf("expected game done and lost after misses, got done=%v won=%v", done, won)
+		t.Fatalf("expected game lost once darts run out, got done=%v won=%v", done, won)
 	}
 }
 

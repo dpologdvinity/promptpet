@@ -7,7 +7,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
@@ -49,8 +48,8 @@ func (g *MemorySimon) Name() string {
 
 func (g *MemorySimon) Init(pet companion.PetDef) {
 	g.pet = pet
-	// Generate default 4-step sequence
-	g.sequence = make([]int, 4)
+	// Generate a random 3-to-5 step sequence (DESIGN §5)
+	g.sequence = make([]int, 3+rand.Intn(3))
 	for i := range g.sequence {
 		g.sequence[i] = 1 + rand.Intn(3)
 	}
@@ -149,11 +148,11 @@ func (g *MemorySimon) Update() (done bool, won bool, score int) {
 	}
 
 	// 2. Input phase: listen for keys 1, 2, 3
-	if inpututil.IsKeyJustPressed(ebiten.KeyDigit1) || inpututil.IsKeyJustPressed(ebiten.Key1) {
+	if justPressed(ebiten.KeyDigit1) || justPressed(ebiten.Key1) {
 		g.InputStep(1)
-	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit2) || inpututil.IsKeyJustPressed(ebiten.Key2) {
+	} else if justPressed(ebiten.KeyDigit2) || justPressed(ebiten.Key2) {
 		g.InputStep(2)
-	} else if inpututil.IsKeyJustPressed(ebiten.KeyDigit3) || inpututil.IsKeyJustPressed(ebiten.Key3) {
+	} else if justPressed(ebiten.KeyDigit3) || justPressed(ebiten.Key3) {
 		g.InputStep(3)
 	}
 

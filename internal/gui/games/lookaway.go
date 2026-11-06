@@ -7,7 +7,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
@@ -113,9 +112,9 @@ func (g *LookAway) Update() (done bool, won bool, score int) {
 
 	// State 0: waiting for player input
 	guess := dirCenter
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) || inpututil.IsKeyJustPressed(ebiten.KeyA) {
+	if justPressed(ebiten.KeyArrowLeft) || justPressed(ebiten.KeyA) {
 		guess = dirLeft
-	} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) || inpututil.IsKeyJustPressed(ebiten.KeyD) {
+	} else if justPressed(ebiten.KeyArrowRight) || justPressed(ebiten.KeyD) {
 		guess = dirRight
 	}
 

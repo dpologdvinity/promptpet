@@ -7,7 +7,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
@@ -122,9 +121,9 @@ func (g *PuddleLeap) Update() (done bool, won bool, score int) {
 	// 1. Jump input
 	onGround := g.petY >= g.groundY
 	if onGround {
-		if inpututil.IsKeyJustPressed(ebiten.KeySpace) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyW) {
+		if justPressed(ebiten.KeySpace) ||
+			justPressed(ebiten.KeyArrowUp) ||
+			justPressed(ebiten.KeyW) {
 			g.vy = g.jumpVelocity
 		}
 	}

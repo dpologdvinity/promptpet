@@ -8,7 +8,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
@@ -32,13 +31,12 @@ type dartObj struct {
 }
 
 // BalloonPop is an arcade mini-game where the player aims darts to pop rising balloons.
-// Pop 5 balloons to win before 4 escape.
+// Pop 5 balloons with a budget of 6 darts (DESIGN §5).
 type BalloonPop struct {
 	pet        companion.PetDef
 	targetPops int
 	popped     int
-	misses     int
-	maxMisses  int
+	dartsLeft  int
 	aimAngle   float64 // Radians from horizontal
 	originX    float32
 	originY    float32
@@ -54,7 +52,7 @@ type BalloonPop struct {
 func NewBalloonPop() *BalloonPop {
 	g := &BalloonPop{
 		targetPops: 5,
-		maxMisses:  4,
+		dartsLeft:  balloonDarts,
 		aimAngle:   0,
 		originX:    44,
 		originY:    140,
@@ -62,6 +60,9 @@ func NewBalloonPop() *BalloonPop {
 	}
 	return g
 }
+
+// balloonDarts is the dart budget per round.
+const balloonDarts = 6
 
 func (g *BalloonPop) Name() string {
 	return "Balloon Pop"
@@ -71,8 +72,7 @@ func (g *BalloonPop) Init(pet companion.PetDef) {
 	g.pet = pet
 	g.targetPops = 5
 	g.popped = 0
-	g.misses = 0
-	g.maxMisses = 4
+	g.dartsLeft = balloonDarts
 	g.aimAngle = 0
 	g.originX = 44
 	g.originY = 140
@@ -89,11 +89,17 @@ func (g *BalloonPop) SetAimAngle(rad float64) {
 	g.aimAngle = rad
 }
 
-// ShootDart launches a dart along the current aim angle.
+// DartsLeft returns how many darts remain in the budget.
+func (g *BalloonPop) DartsLeft() int {
+	return g.dartsLeft
+}
+
+// ShootDart launches a dart along the current aim angle, if any remain.
 func (g *BalloonPop) ShootDart() {
-	if g.done {
+	if g.done || g.dartsLeft <= 0 {
 		return
 	}
+	g.dartsLeft--
 	speed := float32(6.0)
 	vx := float32(math.Cos(g.aimAngle)) * speed
 	vy := float32(math.Sin(g.aimAngle)) * speed
@@ -119,18 +125,6 @@ func (g *BalloonPop) PopBalloon() {
 	}
 }
 
-// MissBalloon increments missed count directly.
-func (g *BalloonPop) MissBalloon() {
-	if g.done {
-		return
-	}
-	g.misses++
-	if g.misses >= g.maxMisses {
-		g.done = true
-		g.won = false
-	}
-}
-
 func (g *BalloonPop) Update() (done bool, won bool, score int) {
 	if g.done {
 		return true, g.won, g.calculateScore()
@@ -141,28 +135,22 @@ func (g *BalloonPop) Update() (done bool, won bool, score int) {
 		g.won = true
 		return true, true, g.calculateScore()
 	}
-	if g.misses >= g.maxMisses {
-		g.done = true
-		g.won = false
-		return true, false, g.calculateScore()
-	}
-
 	g.ticks++
 
 	// 1. Controls
-	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
+	if pressed(ebiten.KeyArrowUp) || pressed(ebiten.KeyW) {
 		g.aimAngle -= 0.04
 		if g.aimAngle < -0.9 {
 			g.aimAngle = -0.9
 		}
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
+	if pressed(ebiten.KeyArrowDown) || pressed(ebiten.KeyS) {
 		g.aimAngle += 0.04
 		if g.aimAngle > 0.9 {
 			g.aimAngle = 0.9
 		}
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+	if justPressed(ebiten.KeySpace) {
 		g.ShootDart()
 	}
 
@@ -199,8 +187,7 @@ func (g *BalloonPop) Update() (done bool, won bool, score int) {
 		}
 		b.y -= b.speed
 		if b.y < 52 {
-			b.active = false
-			g.MissBalloon()
+			b.active = false // escaped balloons cost nothing; only darts are limited
 		}
 	}
 
@@ -244,7 +231,7 @@ func (g *BalloonPop) Update() (done bool, won bool, score int) {
 		g.won = true
 		return true, true, g.calculateScore()
 	}
-	if g.misses >= g.maxMisses {
+	if g.dartsLeft == 0 && !g.dartInFlight() {
 		g.done = true
 		g.won = false
 		return true, false, g.calculateScore()
@@ -253,10 +240,19 @@ func (g *BalloonPop) Update() (done bool, won bool, score int) {
 	return false, false, g.calculateScore()
 }
 
+func (g *BalloonPop) dartInFlight() bool {
+	for _, d := range g.darts {
+		if d.active {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *BalloonPop) calculateScore() int {
 	score := g.popped * 200
 	if g.won {
-		score += (g.maxMisses-g.misses)*100 + 400
+		score += g.dartsLeft*100 + 400
 	}
 	return score
 }
@@ -264,7 +260,7 @@ func (g *BalloonPop) calculateScore() int {
 func (g *BalloonPop) Draw(screen *ebiten.Image) {
 	// LCD Area: x in [28, 212], y in [48, 226]
 	ebitenutil.DebugPrintAt(screen, "BALLOON POP", 82, 52)
-	statusText := fmt.Sprintf("Pop: %d/%d  Miss: %d/%d", g.popped, g.targetPops, g.misses, g.maxMisses)
+	statusText := fmt.Sprintf("Pop: %d/%d  Darts: %d", g.popped, g.targetPops, g.dartsLeft)
 	ebitenutil.DebugPrintAt(screen, statusText, 48, 68)
 
 	// 1. Draw Balloons

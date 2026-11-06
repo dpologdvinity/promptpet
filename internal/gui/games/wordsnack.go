@@ -9,7 +9,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
@@ -158,7 +157,7 @@ func (g *WordSnack) Update() (done bool, won bool, score int) {
 
 	// 1. Keyboard Input: Check letters A-Z
 	for k := ebiten.KeyA; k <= ebiten.KeyZ; k++ {
-		if inpututil.IsKeyJustPressed(k) {
+		if justPressed(k) {
 			char := rune('A' + (k - ebiten.KeyA))
 			g.TypeLetter(char)
 			break

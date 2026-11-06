@@ -8,7 +8,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
@@ -123,10 +122,10 @@ func (g *RhythmDance) Update() (done bool, won bool, score int) {
 
 	// 2. Input handling
 	inputLanes := [4]bool{
-		inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) || inpututil.IsKeyJustPressed(ebiten.KeyA),
-		inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) || inpututil.IsKeyJustPressed(ebiten.KeyW),
-		inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) || inpututil.IsKeyJustPressed(ebiten.KeyS),
-		inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) || inpututil.IsKeyJustPressed(ebiten.KeyD),
+		justPressed(ebiten.KeyArrowLeft) || justPressed(ebiten.KeyA),
+		justPressed(ebiten.KeyArrowUp) || justPressed(ebiten.KeyW),
+		justPressed(ebiten.KeyArrowDown) || justPressed(ebiten.KeyS),
+		justPressed(ebiten.KeyArrowRight) || justPressed(ebiten.KeyD),
 	}
 
 	for laneIdx, pressed := range inputLanes {
