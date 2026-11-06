@@ -98,8 +98,9 @@ The companion window brings your shell pet to life in a dedicated retro virtual 
   - `M`: Toggle retro 8-bit sound blips on/off.
   - `Esc`: Exit the current mini-game back to companion mode.
   - `Q`: Quit the companion window.
-  - **Face buttons (click):** in companion mode `A`/`C` switch to the previous/next pet and `B` changes the casing. In games, `A` = `Left`/`1`, `B` = `Space`/`2`, `C` = `Right`/`3`.
-  - **Drag** the casing with the mouse to move the window.
+  - **Face buttons (click):** in companion mode `A`/`C` switch to the previous/next pet and `B` changes the casing. In games, `A` = `Left`/`1`, `B` = `Space`/`2`, `C` = `Right`/`3` (aiming in Balloon Pop and the Up/Down lanes in Rhythm Dance still need the keyboard).
+  - **Drag** the casing with the mouse to move the window. (Native Wayland sessions don't let apps place or move windows; there the compositor decides. WSLg and X11 work.)
+- **One Window Owns the State:** While the window is open it holds `companion.lock`, so a second `promptpet gui` refuses to start and `promptpet pet <name>` asks you to switch with `Tab` instead (otherwise the window would overwrite the change).
 
 ---
 
@@ -107,7 +108,7 @@ The companion window brings your shell pet to life in a dedicated retro virtual 
 
 `promptpet` is architected so that the shell prompt and GUI window coexist seamlessly with zero interference:
 
-- **Guaranteed Fast Prompt Latency (<5 ms):** The shell prompt path only appends a small event record (`command_finish`, exit code, command duration, timestamp, and any git milestone) to `events.jsonl`. The shell hooks time each command without spawning processes (`$EPOCHREALTIME` in zsh and bash 5+, `$CMD_DURATION` in fish); older bash omits the duration. It never waits on GUI locks or blocks terminal execution. Benchmarks confirm prompt execution averages ~1.2 ms/op.
+- **Guaranteed Fast Prompt Latency (<5 ms):** The shell prompt path only appends a small event record (`command_finish`, exit code, command duration, timestamp, and any git milestone) to `events.jsonl`. The shell hooks time each command without spawning processes (`$EPOCHREALTIME` in zsh and bash 5+, `$CMD_DURATION` in fish); older bash omits the duration. It never waits on GUI locks or blocks terminal execution. Benchmarks confirm prompt execution averages ~1.5 ms/op.
 - **Asynchronous Event IPC:** The GUI process polls `events.jsonl` once per second (`1 Hz`), maintaining an incremental byte offset cursor. It seeks and streams new terminal events without file contention. The event log automatically rotates at 2 MB to prevent unbounded disk growth.
 - **Independent State Isolation:** Prompt vitals and feeding live in `state.json`, while companion pet preferences, wellness timestamps, and mini-game high scores reside in `companion.json`.
 - **Headless Detection:** If launched without an active X11, Wayland, or desktop display server, `promptpet gui` exits cleanly with a helpful error message instead of crashing.

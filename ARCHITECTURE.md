@@ -4,7 +4,7 @@
 
 ## Architectural Objectives
 
-1. **Strict Prompt Budget (<5 ms):** Shell prompt latency is critical. `promptpet prompt` must complete well under 5 ms (benchmark verified at ~1.2 ms/op). It performs zero network I/O, zero git subprocess invocations, minimal disk operations, and non-blocking append logging.
+1. **Strict Prompt Budget (<5 ms):** Shell prompt latency is critical. `promptpet prompt` must complete well under 5 ms (benchmark verified at ~1.5 ms/op). It performs zero network I/O, zero git subprocess invocations, minimal disk operations, and non-blocking append logging.
 2. **Deterministic Domain Logic:** Core pet state transitions, decay mechanics, mood determination, wellness timers, and mini-game rules are pure functions isolated from external side effects.
 3. **Decoupled Concurrency & Detached Processing:**
    - Git repository inspection runs asynchronously in a detached daemon process (`promptpet _feed`).
@@ -186,7 +186,7 @@ graph TD
 - **Zero-Contention Inter-Process Architecture:**
   - Shell prompt process writes to `events.jsonl` and exits in ~1 ms.
   - Background feeder updates git commit history in `events.log` without holding shell locks.
-  - GUI companion runs in its own OS process, reading `events.jsonl` and updating `companion.json`.
+  - GUI companion runs in its own OS process, reading `events.jsonl` and updating `companion.json`. It holds `companion.lock` for its whole lifetime because it keeps the state in memory; CLI writers (`pet <name>`) fail fast instead of being overwritten, and a second window refuses to start.
   - No process shares memory or blocks on another process.
 - **Disk I/O Throttling:**
   - The GUI companion window limits event polling to 1 Hz (`lastEventPoll`), avoiding continuous disk reads.
