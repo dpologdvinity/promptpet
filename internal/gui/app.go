@@ -37,6 +37,8 @@ type App struct {
 	ticks           int64
 	speech          string
 	mood            companion.RhythmMood
+	lastEventAt     time.Time              // when the last shell event arrived; mood relaxes after moodIdleAfter
+	clock           func() time.Time       // time source, swapped in tests
 	wellness        companion.WellnessType // reminder currently shown, cleared at wellnessUntil
 	wellnessUntil   time.Time
 	lastEventOffset int64
@@ -50,6 +52,9 @@ type App struct {
 
 // wellnessPropDuration is how long a reminder prop (water glass, stretch, binoculars) stays on screen.
 const wellnessPropDuration = 30 * time.Second
+
+// moodIdleAfter is how long without shell events before the mood returns to resting.
+const moodIdleAfter = 5 * time.Minute
 
 // NewApp initializes a new companion application.
 func NewApp(cfg Config) (*App, error) {
@@ -100,6 +105,7 @@ func NewApp(cfg Config) (*App, error) {
 		lastEventPoll:   time.Time{}, // allow immediate first read
 		lastWellness:    time.Time{}, // allow immediate first check
 		idleThrottled:   true,
+		clock:           time.Now,
 	}
 
 	return app, nil
@@ -364,7 +370,7 @@ func (a *App) Update() error {
 		}
 	}
 
-	now := time.Now()
+	now := a.clock()
 
 	// 3. Inter-process event polling: throttled to 1s to prevent 20Hz disk I/O
 	if now.Sub(a.lastEventPoll) >= 1*time.Second {
@@ -373,6 +379,7 @@ func (a *App) Update() error {
 		if err == nil {
 			a.lastEventOffset = newOffset
 			if len(events) > 0 {
+				a.lastEventAt = now
 				mood, rSpeech := a.state.EvaluateRhythm(events, now)
 				a.mood = mood
 				if mood == companion.MoodFanfare && rSpeech != "" {
@@ -382,6 +389,13 @@ func (a *App) Update() error {
 				}
 			}
 		}
+	}
+
+	// Without new commands the pet drifts back to resting (as EvaluateRhythm does
+	// for a >5m pause), so confetti or a fanfare doesn't animate for hours.
+	if a.mood != companion.MoodResting && !a.lastEventAt.IsZero() && now.Sub(a.lastEventAt) > moodIdleAfter {
+		a.mood = companion.MoodResting
+		a.speech = a.activePet.SpeechFor(string(companion.MoodResting))
 	}
 
 	if a.wellness != companion.WellnessNone && now.After(a.wellnessUntil) {
