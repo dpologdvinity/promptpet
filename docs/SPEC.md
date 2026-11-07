@@ -164,7 +164,7 @@ New pet (no `state.json`): `Version 1, Name "Pip", Species "cat", Born now, Food
   - Other commands on lock timeout: exit 1 with `promptpet: another promptpet is busy; try again`.
 - Save is atomic: write `state.json.tmp-<pid>`, `fsync` is not needed, then `os.Rename` over `state.json`.
 - Missing file: new pet.
-- Unparseable JSON: rename the file to `state.json.corrupt-<unix seconds>`, start a new pet, and (foreground commands only) print `promptpet: your pet's state file was unreadable; moved it to <path> and started fresh` to stderr. Exit code stays 0.
+- Unparsable JSON: rename the file to `state.json.corrupt-<unix seconds>`, start a new pet, and (foreground commands only) print `promptpet: your pet's state file was unreadable; moved it to <path> and started fresh` to stderr. Exit code stays 0.
 - `version` greater than 1: foreground commands exit 1 with `promptpet: state was written by a newer promptpet; please upgrade`. `prompt` prints nothing.
 
 ## 6. Pet rules (package `internal/pet`, pure, no I/O)
