@@ -1,0 +1,13 @@
+# Git hooks managed by lefthook (https://lefthook.dev).
+# Enable locally with `lefthook install`; skip once with `LEFTHOOK=0 git commit`.
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      # Block commits that stage secrets (API keys, tokens, passwords).
+      run: gitleaks git --staged --no-banner --redact
+    gofmt:
+      glob: "*.go"
+      run: test -z "$(gofmt -l {staged_files})" || { gofmt -l {staged_files}; exit 1; }
+    typos:
+      run: typos {staged_files}
