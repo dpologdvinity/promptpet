@@ -229,6 +229,8 @@ promptpet --version        print current version
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, testing guidelines, and pull request workflows.
 
+This project is built with AI coding agents using a spec → plan → execute workflow. Agent instructions live in [AGENTS.md](AGENTS.md). The design specs and implementation plans live in [docs/agents/](docs/agents/).
+
 ---
 
 ## License

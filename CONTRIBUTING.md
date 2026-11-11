@@ -102,7 +102,15 @@ This project strictly follows the **Conventional Commits** specification:
 1. Write concise, imperative commit headers (e.g., `feat(cli): add prompt styling flags`).
 2. Keep commits atomic and logically separated.
 3. Ensure `go test ./...` and `go vet ./...` pass before every commit.
-4. Never commit agent-specific files (`.claude/`, `.codex/`, `AGENTS.md`, `CLAUDE.md`, `.superpowers/`).
+4. Never commit personal agent config (`.claude/settings.local.json`, `CLAUDE.local.md`, `.superpowers/`). Shared agent config (`AGENTS.md`, `.claude/settings.json`, `docs/agents/`) is committed. See [AGENTS.md](AGENTS.md).
+
+### Git Hooks
+
+[lefthook](https://lefthook.dev) runs `gitleaks`, `gofmt` and `typos` on staged files before each commit. Enable it with:
+
+```sh
+lefthook install
+```
 
 ---
 
