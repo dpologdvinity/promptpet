@@ -40,7 +40,7 @@ func TestDrawPetAllScenes(t *testing.T) {
 	}
 }
 
-// TestSceneHours checks the day/night prop boundaries from DESIGN.md §6.
+// TestSceneHours checks the day/night prop boundaries from docs/agents/specs/2026-10-24-companion-window-design.md §6.
 // Prop pixels can't be asserted: ebiten's ReadPixels/At panic before
 // RunGame starts, and RunGame needs a window, so tests stay headless.
 func TestSceneHours(t *testing.T) {

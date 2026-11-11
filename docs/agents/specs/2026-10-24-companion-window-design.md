@@ -1,6 +1,6 @@
 # Design Document: Virtual Device Mini-Window Companion
 
-**Document:** `docs/DESIGN.md`  
+**Document:** `docs/agents/specs/2026-10-24-companion-window-design.md`  
 **Date:** 2026-10-24  
 **Status:** Approved by User · Implemented  
 

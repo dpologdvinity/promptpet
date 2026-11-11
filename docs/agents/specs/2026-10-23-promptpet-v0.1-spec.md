@@ -7,7 +7,7 @@ reacts to the exit code of the last command. Neglect is gentle: the pet never
 dies. When it gets too hungry it goes off exploring, and it comes back the
 next time you commit or call it.
 
-This document is the source of truth for v0.1 behavior. `docs/PLAN.md` says how
+This document is the source of truth for v0.1 behavior. [the plan](../plans/2026-10-23-promptpet-v0.1-plan.md) says how
 to build it. If the plan and the spec disagree, the spec wins.
 
 ## 1. Goals and non-goals

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Go (`go 1.26` in go.mod), stdlib only, GoReleaser v2, GitHub Actions.
 
-**Spec:** `docs/SPEC.md`
+**Spec:** [`docs/agents/specs/2026-10-23-promptpet-v0.1-spec.md`](../specs/2026-10-23-promptpet-v0.1-spec.md)
 
 ## Global Constraints
 
