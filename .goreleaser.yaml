@@ -1,7 +1,20 @@
 version: 2
 project_name: promptpet
+# Two binaries: promptpet runs on every shell prompt and must not link
+# Ebitengine (its package init alone cost ~35 ms per prompt), so the companion
+# window is promptpet-gui. Archives and packages ship both side by side.
 builds:
-  - env: [CGO_ENABLED=0]
+  - id: promptpet
+    binary: promptpet
+    main: .
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags: ['-s -w -X main.version={{.Version}}']
+  - id: promptpet-gui
+    binary: promptpet-gui
+    main: ./cmd/promptpet-gui
+    env: [CGO_ENABLED=0]
     goos: [linux, darwin]
     goarch: [amd64, arm64]
     ldflags: ['-s -w -X main.version={{.Version}}']

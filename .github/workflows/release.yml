@@ -101,12 +101,13 @@ jobs:
             end
 
             def install
-              bin.install "promptpet"
+              bin.install "promptpet", "promptpet-gui"
               generate_completions_from_executable(bin/"promptpet", "completion")
             end
 
             test do
               assert_match "promptpet #{version}", shell_output("#{bin}/promptpet --version")
+              assert_match "promptpet-gui #{version}", shell_output("#{bin}/promptpet-gui --version")
             end
           end
           EOF
