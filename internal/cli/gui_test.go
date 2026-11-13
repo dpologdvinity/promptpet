@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,8 +14,8 @@ import (
 	"github.com/dpologdvinity/promptpet/internal/cli"
 	"github.com/dpologdvinity/promptpet/internal/companion"
 	"github.com/dpologdvinity/promptpet/internal/event"
-	"github.com/dpologdvinity/promptpet/internal/gui"
 	"github.com/dpologdvinity/promptpet/internal/store"
+	"github.com/dpologdvinity/promptpet/internal/window"
 )
 
 func TestPetSwitchCommand(t *testing.T) {
@@ -157,8 +158,10 @@ func TestGUICommand_MockRun(t *testing.T) {
 		return os.Getenv(k)
 	}
 
+	t.Setenv("PROMPTPET_HEADLESS", "")
+	t.Setenv("DISPLAY", ":0")
 	called := false
-	d.RunGUI = func(cfg gui.Config) error {
+	d.RunGUI = func() error {
 		called = true
 		return nil
 	}
@@ -414,23 +417,23 @@ func TestGUIDetach(t *testing.T) {
 		}
 		return os.Getenv(k)
 	}
-	d.RunGUI = func(gui.Config) error { t.Fatal("--detach must not run the window in-process"); return nil }
-	var detached []string
-	d.Detach = func(args []string) error { detached = args; return nil }
+	d.RunGUI = func() error { t.Fatal("--detach must not wait for the window"); return nil }
+	detached := false
+	d.Detach = func() error { detached = true; return nil }
 	t.Setenv("PROMPTPET_HEADLESS", "")
 	t.Setenv("DISPLAY", ":0")
 
 	if code := cli.Run([]string{"gui", "--detach"}, d); code != 0 {
 		t.Fatalf("expected 0, got %d: %s", code, errOut.String())
 	}
-	if strings.Join(detached, " ") != "gui" {
-		t.Fatalf("expected detached child args [gui], got %v", detached)
+	if !detached {
+		t.Fatal("expected promptpet-gui to be started detached")
 	}
 
 	// Headless: refuse up front instead of spawning a child that dies silently.
-	detached = nil
+	detached = false
 	t.Setenv("PROMPTPET_HEADLESS", "1")
-	if code := cli.Run([]string{"gui", "--detach"}, d); code != 1 || detached != nil {
+	if code := cli.Run([]string{"gui", "--detach"}, d); code != 1 || detached {
 		t.Fatalf("expected headless refusal, got code %d detached %v", code, detached)
 	}
 
@@ -501,44 +504,50 @@ func TestPromptRepoSwitchNoStaleMilestone(t *testing.T) {
 	}
 }
 
-// TestGUIHoldsCompanionLock: while the window runs it owns companion.json, so
-// `pet <name>` is refused (the window would overwrite it) and a second window can't start.
-func TestGUIHoldsCompanionLock(t *testing.T) {
+// TestGUIRefusesWhileWindowOpen: while a window holds companion.lock, `promptpet gui`
+// refuses before launching promptpet-gui. (The window side is tested in internal/window.)
+func TestGUIRefusesWhileWindowOpen(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("PROMPTPET_HOME", tmpDir)
-	sp := filepath.Join(tmpDir, "companion.json")
-	t.Setenv("PROMPTPET_COMPANION_STATE_FILE", sp)
+	t.Setenv("PROMPTPET_COMPANION_STATE_FILE", filepath.Join(tmpDir, "companion.json"))
+	t.Setenv("PROMPTPET_HEADLESS", "")
+	t.Setenv("DISPLAY", ":0")
+	unlock, err := window.Lock(os.Getenv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
 
 	var out, errOut bytes.Buffer
 	d := cli.RealDeps("dev")
-	d.Stdout, d.Stderr = &out, &errOut
-	d.Getenv = os.Getenv
+	d.Stdout, d.Stderr, d.Getenv = &out, &errOut, os.Getenv
+	d.RunGUI = func() error { t.Error("must not launch a second window"); return nil }
+	d.Detach = func() error { t.Error("must not launch a second window"); return nil }
+	for _, args := range [][]string{{"gui"}, {"gui", "--detach"}} {
+		if code := cli.Run(args, d); code != 1 || !strings.Contains(errOut.String(), "already running") {
+			t.Errorf("%v: code %d, stderr %q", args, code, errOut.String())
+		}
+	}
+}
 
-	var petCode, secondCode int
-	var petErr string
-	d.RunGUI = func(gui.Config) error {
-		var pOut, pErr bytes.Buffer
-		petCode = cli.Run([]string{"pet", "kochi"}, &pOut, &pErr)
-		petErr = pErr.String()
+// TestGUIReportsMissingBinaryAndChildExit: a missing promptpet-gui gets an install
+// hint, and promptpet-gui's own exit code is passed through without a second message.
+func TestGUIReportsMissingBinaryAndChildExit(t *testing.T) {
+	t.Setenv("PROMPTPET_HOME", t.TempDir())
+	t.Setenv("PROMPTPET_HEADLESS", "")
+	t.Setenv("DISPLAY", ":0")
+	var out, errOut bytes.Buffer
+	d := cli.RealDeps("dev")
+	d.Stdout, d.Stderr, d.Getenv = &out, &errOut, os.Getenv
 
-		inner := d
-		inner.RunGUI = func(gui.Config) error { t.Error("second window must not start"); return nil }
-		secondCode = cli.Run([]string{"gui"}, inner)
-		return nil
-	}
-	if code := cli.Run([]string{"gui"}, d); code != 0 {
-		t.Fatalf("gui exited %d: %s", code, errOut.String())
-	}
-	if petCode == 0 || !strings.Contains(petErr, "companion window") {
-		t.Errorf("pet switch while window open: code %d, stderr %q", petCode, petErr)
-	}
-	if secondCode == 0 {
-		t.Error("second gui should fail while the first holds the lock")
+	d.RunGUI = func() error { return window.ErrNotInstalled }
+	if code := cli.Run([]string{"gui"}, d); code != 1 || !strings.Contains(errOut.String(), "go install github.com/dpologdvinity/promptpet/cmd/promptpet-gui@latest") {
+		t.Fatalf("missing binary: code %d, stderr %q", code, errOut.String())
 	}
 
-	// After the window closes the lock is released and switching works.
-	var pOut, pErr bytes.Buffer
-	if code := cli.Run([]string{"pet", "kochi"}, &pOut, &pErr); code != 0 {
-		t.Fatalf("pet switch after window closed: %d %s", code, pErr.String())
+	errOut.Reset()
+	d.RunGUI = func() error { return exec.Command("sh", "-c", "exit 3").Run() }
+	if code := cli.Run([]string{"gui"}, d); code != 3 || errOut.Len() != 0 {
+		t.Fatalf("child exit: code %d, stderr %q", code, errOut.String())
 	}
 }

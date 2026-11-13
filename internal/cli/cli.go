@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/dpologdvinity/promptpet/internal/companion"
 	"github.com/dpologdvinity/promptpet/internal/feed"
-	"github.com/dpologdvinity/promptpet/internal/gui"
 	"github.com/dpologdvinity/promptpet/internal/hooks"
 	"github.com/dpologdvinity/promptpet/internal/pet"
 	"github.com/dpologdvinity/promptpet/internal/store"
+	"github.com/dpologdvinity/promptpet/internal/window"
 	"io"
 	"math/rand/v2"
 	"os"
@@ -27,8 +27,8 @@ type Deps struct {
 	Spawn   func(string) error
 	Stdout  io.Writer
 	Stderr  io.Writer
-	RunGUI  func(gui.Config) error
-	Detach  func(args []string) error // start promptpet with args as a background session
+	RunGUI  func() error // run promptpet-gui in the foreground and wait for it
+	Detach  func() error // start promptpet-gui in its own session, in the background
 }
 
 func RealDeps(version string) Deps {
@@ -42,8 +42,8 @@ func RealDeps(version string) Deps {
 		Spawn:   realSpawn,
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
-		RunGUI:  gui.Run,
-		Detach:  realDetach,
+		RunGUI:  realRunGUI,
+		Detach:  realDetachGUI,
 	}
 }
 func realSpawn(worktree string) error {
@@ -59,14 +59,25 @@ func realSpawn(worktree string) error {
 	return cmd.Process.Release()
 }
 
-// realDetach re-runs this binary with args in a new session, detached from the terminal,
-// so it survives the shell closing.
-func realDetach(args []string) error {
-	exe, err := os.Executable()
+// realRunGUI runs promptpet-gui attached to this terminal and waits for it.
+func realRunGUI() error {
+	bin, err := window.RealFind()
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(exe, args...)
+	cmd := exec.Command(bin)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
+}
+
+// realDetachGUI starts promptpet-gui in a new session, detached from the terminal,
+// so it survives the shell closing.
+func realDetachGUI() error {
+	bin, err := window.RealFind()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(bin)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err = cmd.Start(); err != nil {
 		return err
@@ -160,10 +171,10 @@ func Run(args []string, extra ...any) int {
 		d.Stderr = os.Stderr
 	}
 	if d.RunGUI == nil {
-		d.RunGUI = gui.Run
+		d.RunGUI = realRunGUI
 	}
 	if d.Detach == nil {
-		d.Detach = realDetach
+		d.Detach = realDetachGUI
 	}
 	if d.Rand == nil {
 		d.Rand = rand.New(rand.NewPCG(1, 2))

@@ -3,7 +3,6 @@ package gui
 import (
 	"errors"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 
@@ -14,17 +13,14 @@ import (
 	"github.com/dpologdvinity/promptpet/internal/event"
 	"github.com/dpologdvinity/promptpet/internal/gui/games"
 	"github.com/dpologdvinity/promptpet/internal/gui/sound"
+	"github.com/dpologdvinity/promptpet/internal/window"
 )
 
 // ErrHeadless is returned when attempting to run the GUI in an environment without a display server.
-var ErrHeadless = errors.New("gui: no display available (headless environment)")
+var ErrHeadless = window.ErrHeadless
 
 // Config holds initialization paths for companion state and event IPC.
-type Config struct {
-	StatePath          string
-	EventPath          string
-	InitialEventOffset *int64
-}
+type Config = window.Config
 
 // App implements ebiten.Game to render the handheld virtual pet companion.
 type App struct {
@@ -478,13 +474,7 @@ func cornerPosition(monitorW, monitorH int) (x, y int) {
 
 // Headless reports whether no display server is available for the companion window.
 func Headless() bool {
-	if os.Getenv("PROMPTPET_HEADLESS") == "1" {
-		return true
-	}
-	if runtime.GOOS == "linux" {
-		return os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == ""
-	}
-	return false
+	return window.Headless(os.Getenv)
 }
 
 // Run configures the Ebitengine window and launches the companion application loop.

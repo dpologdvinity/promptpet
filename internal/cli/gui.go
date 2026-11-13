@@ -3,95 +3,59 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
-	"github.com/dpologdvinity/promptpet/internal/event"
-	"github.com/dpologdvinity/promptpet/internal/gui"
 	"github.com/dpologdvinity/promptpet/internal/pet"
 	"github.com/dpologdvinity/promptpet/internal/store"
+	"github.com/dpologdvinity/promptpet/internal/window"
 )
 
-func statePath(d Deps) string {
-	if d.Getenv != nil {
-		if f := d.Getenv("PROMPTPET_COMPANION_STATE_FILE"); f != "" {
-			return f
-		}
-		if dir, err := store.Dir(d.Getenv); err == nil {
-			return filepath.Join(dir, "companion.json")
-		}
-	}
-	return companion.DefaultStatePath()
-}
+func statePath(d Deps) string { return window.StatePath(d.Getenv) }
 
-func eventPath(d Deps) string {
-	if d.Getenv != nil {
-		if f := d.Getenv("PROMPTPET_EVENT_FILE"); f != "" {
-			return f
-		}
-		if dir, err := store.Dir(d.Getenv); err == nil {
-			return filepath.Join(dir, "events.jsonl")
-		}
-	}
-	return event.GetEventFilePath()
-}
+func eventPath(d Deps) string { return window.EventPath(d.Getenv) }
 
 // lockCompanion takes companion.lock next to the companion state file.
-func lockCompanion(d Deps) (func(), error) {
-	return store.Lock(filepath.Dir(statePath(d)), "companion.lock", 200*time.Millisecond)
-}
+func lockCompanion(d Deps) (func(), error) { return window.Lock(d.Getenv) }
 
+// runGUI starts the companion window. The window is a separate binary,
+// promptpet-gui, so this one never links Ebitengine (see internal/window).
 func runGUI(args []string, d Deps) int {
+	detach := false
 	if len(args) > 0 {
 		if len(args) != 1 || (args[0] != "--detach" && args[0] != "-d") {
 			return usageError(d, "usage: promptpet gui [--detach]")
 		}
-		// Check here: a detached child has no terminal to report a missing display.
-		if gui.Headless() {
-			fmt.Fprintln(d.Stderr, "promptpet gui requires a graphical display (X11/Wayland/WSLg)")
-			return 1
-		}
-		unlock, err := lockCompanion(d)
-		if err != nil {
-			fmt.Fprintln(d.Stderr, "promptpet: the companion window is already running")
-			return 1
-		}
-		unlock() // only a pre-check; the detached window takes the lock itself
-		if err := d.Detach([]string{"gui"}); err != nil {
+		detach = true
+	}
+	// Check here: a detached window has no terminal to report a missing display.
+	if window.Headless(d.Getenv) {
+		fmt.Fprintln(d.Stderr, window.HeadlessMessage)
+		return 1
+	}
+	unlock, err := lockCompanion(d)
+	if err != nil {
+		fmt.Fprintln(d.Stderr, window.RunningMessage)
+		return 1
+	}
+	unlock() // only a pre-check; promptpet-gui holds the lock for the window's whole life
+
+	if detach {
+		if err := d.Detach(); err != nil {
 			return runtimeError(d, err)
 		}
 		fmt.Fprintln(d.Stdout, "promptpet companion started in the background (press Q in its window to quit).")
 		return 0
 	}
-
-	// The window owns companion.json while open: it keeps the state in memory and
-	// would overwrite CLI edits, so hold the lock for its whole lifetime.
-	unlock, err := lockCompanion(d)
-	if err != nil {
-		fmt.Fprintln(d.Stderr, "promptpet: the companion window is already running")
-		return 1
-	}
-	defer unlock()
-
-	cfg := gui.Config{
-		StatePath: statePath(d),
-		EventPath: eventPath(d),
-	}
-
-	runFn := gui.Run
-	if d.RunGUI != nil {
-		runFn = d.RunGUI
-	}
-
-	if err := runFn(cfg); err != nil {
-		if errors.Is(err, gui.ErrHeadless) {
-			fmt.Fprintln(d.Stderr, "promptpet gui requires a graphical display (X11/Wayland/WSLg)")
-		} else {
-			fmt.Fprintf(d.Stderr, "promptpet: %v\n", err)
+	if err := d.RunGUI(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return exitErr.ExitCode() // promptpet-gui already explained on stderr
 		}
-		return 1
+		return runtimeError(d, err)
 	}
 	return 0
 }
