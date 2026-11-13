@@ -24,7 +24,7 @@ go vet ./...                                               # static analysis
 test -z "$(gofmt -s -l .)"                                 # format check (CI fails on diff)
 go test -run '^$' -bench BenchmarkPrompt ./internal/cli/   # prompt budget benchmark
 go test -run '^$' -bench . ./test/...                      # prompt + event-logging benchmark
-PROMPTPET_LATENCY_TEST=1 go test -run Latency -v ./test/   # time the built binary (CI runs this)
+PROMPTPET_LATENCY_TEST=1 go test -count=1 -run Latency -v ./test/  # time the built binary (CI runs this)
 ```
 
 Git hooks run through [lefthook](https://lefthook.dev) (`lefthook install`):

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/dpologdvinity/promptpet/internal/companion"
@@ -53,6 +54,10 @@ func runGUI(args []string, d Deps) int {
 	if err := d.RunGUI(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
+			if ws, ok := exitErr.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+				fmt.Fprintf(d.Stderr, "promptpet: the companion window was killed (%v)\n", ws.Signal())
+				return 128 + int(ws.Signal())
+			}
 			return exitErr.ExitCode() // promptpet-gui already explained on stderr
 		}
 		return runtimeError(d, err)

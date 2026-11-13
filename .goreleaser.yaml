@@ -1,7 +1,7 @@
 version: 2
 project_name: promptpet
 # Two binaries: promptpet runs on every shell prompt and must not link
-# Ebitengine (its package init alone cost ~35 ms per prompt), so the companion
+# Ebitengine (its package init alone cost 12 ms per prompt), so the companion
 # window is promptpet-gui. Archives and packages ship both side by side.
 builds:
   - id: promptpet

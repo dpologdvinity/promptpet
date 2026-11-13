@@ -14,8 +14,8 @@ import (
 // TestPromptBinaryLatency runs the real promptpet binary, the way a shell hook
 // does, and checks the prompt budget end to end. In-process benchmarks such as
 // BenchmarkPromptWithEventLogging cannot catch startup costs: Go runs package
-// init once per test binary, so a dependency whose init took ~35 ms on every
-// prompt went unnoticed until v0.5.0 was timed with hyperfine.
+// init once per test binary, so a dependency whose init took 12 ms on every
+// prompt (median 13.9 ms per prompt in total) went unnoticed until v0.5.0 was timed with hyperfine.
 //
 // Wall-clock gates are noisy on a busy laptop, so this only runs when
 // PROMPTPET_LATENCY_TEST=1 (CI sets it on Linux).
@@ -42,8 +42,9 @@ func TestPromptBinaryLatency(t *testing.T) {
 		return time.Since(start), string(out)
 	}
 
-	// Package init must stay small: this is what regressed, and it is CPU time,
-	// so it is far less noisy than wall-clock time.
+	// Package init must stay small: this is what regressed. It is a few short
+	// measurements inside one run, so it is less exposed to scheduling noise
+	// than the whole-process timings below.
 	_, trace := run("GODEBUG=inittrace=1")
 	var initMs float64
 	for _, line := range strings.Split(trace, "\n") {

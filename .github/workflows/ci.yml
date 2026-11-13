@@ -74,7 +74,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         env:
           PROMPTPET_LATENCY_TEST: "1"
-        run: go test -run TestPromptBinaryLatency -v ./test/
+        # -count=1: the test times the built binary, a dependency Go's test cache
+        # cannot see, so a cached result could hide a slower build.
+        run: go test -count=1 -run TestPromptBinaryLatency -v ./test/
 
       - name: Generate text coverage report
         run: go tool cover -func=coverage.out

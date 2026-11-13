@@ -550,4 +550,12 @@ func TestGUIReportsMissingBinaryAndChildExit(t *testing.T) {
 	if code := cli.Run([]string{"gui"}, d); code != 3 || errOut.Len() != 0 {
 		t.Fatalf("child exit: code %d, stderr %q", code, errOut.String())
 	}
+
+	// A window killed by a signal (OOM killer, kill -9) is reported, with the
+	// shell's 128+signal exit code, instead of a silent 255.
+	errOut.Reset()
+	d.RunGUI = func() error { return exec.Command("sh", "-c", "kill -9 $$").Run() }
+	if code := cli.Run([]string{"gui"}, d); code != 137 || !strings.Contains(errOut.String(), "killed") {
+		t.Fatalf("signal exit: code %d, stderr %q", code, errOut.String())
+	}
 }

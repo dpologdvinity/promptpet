@@ -61,7 +61,7 @@ The prompt generation command must execute in under 10 ms. The in-process benchm
 
 ```sh
 go test -bench BenchmarkPrompt -benchmem ./internal/cli/
-PROMPTPET_LATENCY_TEST=1 go test -run Latency -v ./test/
+PROMPTPET_LATENCY_TEST=1 go test -count=1 -run Latency -v ./test/
 ```
 
 ### 5. Formatting & Code Quality

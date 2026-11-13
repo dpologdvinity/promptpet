@@ -37,8 +37,9 @@ const RunningMessage = "promptpet: the companion window is already running"
 var ErrHeadless = errors.New("gui: no display available (headless environment)")
 
 // ErrNotInstalled means promptpet-gui is neither next to promptpet nor on PATH.
-var ErrNotInstalled = errors.New("promptpet gui needs the promptpet-gui binary next to promptpet or on your PATH " +
-	"(go install github.com/dpologdvinity/promptpet/cmd/promptpet-gui@latest)")
+var ErrNotInstalled = errors.New("promptpet gui needs the promptpet-gui binary next to promptpet or on your PATH: " +
+	"copy it from the release archive next to promptpet, " +
+	"or run go install github.com/dpologdvinity/promptpet/cmd/promptpet-gui@latest")
 
 // Config holds initialization paths for companion state and event IPC.
 type Config struct {
