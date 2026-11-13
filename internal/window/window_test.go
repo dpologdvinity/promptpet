@@ -22,7 +22,12 @@ func writeExe(t *testing.T, path string, mode os.FileMode) {
 func noPath(string) (string, error) { return "", errors.New("not found") }
 
 func TestFindBinary(t *testing.T) {
-	dir := t.TempDir()
+	// FindBinary resolves symlinks, and on macOS the temp dir itself is behind
+	// one (/var -> /private/var), so compare against the resolved path.
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	exe := filepath.Join(dir, "promptpet")
 	writeExe(t, exe, 0o755)
 	gui := filepath.Join(dir, window.BinaryName)
