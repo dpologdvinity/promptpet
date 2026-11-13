@@ -4,13 +4,13 @@
 
 ## Architectural Objectives
 
-1. **Strict Prompt Budget (<5 ms):** Shell prompt latency is critical. `promptpet prompt` must complete well under 5 ms (benchmark verified at ~1.5 ms/op). It performs zero network I/O, zero git subprocess invocations, minimal disk operations, and non-blocking append logging.
+1. **Strict Prompt Budget (<10 ms):** Shell prompt latency is critical. The released `promptpet prompt` takes a median 2.1 ms end to end (hyperfine, 500 runs, WSL2 laptop; the in-process benchmark is ~0.8 ms/op). `test/latency_test.go` runs the built binary in CI and fails above 10 ms median or 5 ms of package init. It performs zero network I/O, zero git subprocess invocations, minimal disk operations, and non-blocking append logging.
 2. **Deterministic Domain Logic:** Core pet state transitions, decay mechanics, mood determination, wellness timers, and mini-game rules are pure functions isolated from external side effects.
 3. **Decoupled Concurrency & Detached Processing:**
    - Git repository inspection runs asynchronously in a detached daemon process (`promptpet _feed`).
    - Terminal prompt execution and the desktop GUI mini-window communicate asynchronously via append-only event IPC (`events.jsonl`), with zero shared memory, zero locking contention, and zero IPC backpressure.
 4. **Resilient Persistence:** State storage uses non-blocking file locking (`flock`), atomic file writes via PID-specific tempfiles, and corrupt file recovery to withstand unexpected crashes, process termination, or multiple concurrent shell sessions.
-5. **Minimal Dependencies:** The CLI prompt path uses standard library Go only. The GUI companion subsystem is built on pure-Go Ebitengine with zero CGO requirements.
+5. **Minimal Dependencies, Two Binaries:** `promptpet` links only the standard library. The window, `promptpet-gui` (`cmd/promptpet-gui`), is the only binary that links Ebitengine (pure Go, no CGO). This split is load-bearing: Go runs the init code of every linked package on every start, and Ebitengine's took 12 ms, which made v0.3.0 to v0.5.0 spend a median 13.9 ms per prompt. `main_test.go` fails if `promptpet` links Ebitengine or `internal/gui` again.
 
 ---
 
@@ -41,7 +41,7 @@ graph TD
     end
 
     subgraph Desktop Companion GUI [Handheld Virtual Device]
-        GUI["Companion App (internal/gui)"] -->|"ReadEventsSince (1Hz polled cursor)"| IPC
+        GUI["Companion App (promptpet-gui, internal/gui)"] -->|"ReadEventsSince (1Hz polled cursor)"| IPC
         GUI --> CompState["Companion State (internal/companion)"]
         CompState --> CompFile["companion.json"]
         GUI --> Wellness["Wellness & Rhythm Tracker"]
@@ -104,13 +104,14 @@ graph TD
       Getenv  func(string) string
       Getwd   func() (string, error)
       Spawn   func(worktree string) error
-      RunGUI  func(gui.Config) error
-      Detach  func(args []string) error // gui --detach: re-run in a new session
+      RunGUI  func() error // run promptpet-gui in the foreground and wait
+      Detach  func() error // gui --detach: start promptpet-gui in a new session
       Stdout  io.Writer
       Stderr  io.Writer
   }
   ```
 - Dispatches subcommands: `prompt`, `init`, `completion`, `gui`, `pet`, `games`, `play`, `name`, `species`.
+- `gui` never renders in-process: it checks for a display and a running window, then runs `promptpet-gui` (found by `internal/window`) and passes its exit code through.
 - Full testability with deterministic clocks, mocked environments, and captured output buffers.
 
 ### 6. `internal/hooks`: Shell Integrations
@@ -157,6 +158,7 @@ graph TD
 - **Scene Props (`render_scene.go`):** `DrawPet` takes a `Scene` (rhythm mood, active wellness reminder, local hour) and draws props: sparkles, zzz/book, confetti, tea/band-aid, fanfare star burst, water glass, stretch arrows, binoculars, nightcap, morning coffee.
 - **Speech Bubble System:** Dynamic speech bubble with rounded borders, pointer tail, and text wrapping.
 - **Headless Detection:** Detects headless environments without active display servers (`DISPLAY` / `WAYLAND_DISPLAY`) and returns `gui.ErrHeadless` cleanly.
+- Imported only by `cmd/promptpet-gui`.
 
 ### 10. `internal/gui/games`: Interactive Mini-Games Suite
 - **Interface Abstraction (`game.go`):**
@@ -181,6 +183,12 @@ graph TD
 
 ---
 
+### 11. `internal/window` and `cmd/promptpet-gui`: The Window Process
+- `internal/window` holds everything about the window that does not need Ebitengine, so both binaries can share it: state and event paths, the headless check, `companion.lock`, `FindBinary` (next to the resolved `promptpet` executable, so Homebrew's `bin/` symlinks work, then `$PATH`) and `Main`, the window process's entry point.
+- `Main` checks for a display, takes `companion.lock` for the window's whole life, then calls `gui.Run`. `cmd/promptpet-gui` is a three-line `main` around it.
+
+---
+
 ## Concurrency, Isolation & Throttling Model
 
 - **Zero-Contention Inter-Process Architecture:**
@@ -192,5 +200,5 @@ graph TD
   - The GUI companion window limits event polling to 1 Hz (`lastEventPoll`), avoiding continuous disk reads.
   - Wellness checks run at 0.5 Hz (`lastWellness`).
 - **CPU & Power Throttling:**
-  - When idle in companion mode, the GUI runs at 20 TPS (`ebiten.SetTPS(20)`), consuming ~1% CPU.
+  - When idle in companion mode, the GUI updates at 20 TPS (`ebiten.SetTPS(20)`). Ebitengine still presents frames at the display rate, so idle CPU is set mostly by the graphics driver: about three cores under WSLg's software fallback and about half a core with `GALLIUM_DRIVER=d3d12` on our test laptop. Skipping unchanged draws and presenting only 20 frames a second did not measurably change either number there.
   - While a mini-game is active, it runs at 60 TPS for responsive controls, dropping back to 20 on exit.

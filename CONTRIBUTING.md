@@ -22,10 +22,10 @@ go mod verify
 
 ### 2. Build
 
-Compile local development binary:
+Compile both local development binaries (`promptpet` and the `promptpet-gui` window):
 
 ```sh
-go build -o bin/promptpet .
+go build -o bin/ . ./cmd/promptpet-gui
 ```
 
 Run CLI from source:
@@ -57,10 +57,11 @@ go tool cover -func=coverage.out
 
 ### 4. Benchmarking
 
-The prompt generation command must execute in under 10 ms. Verify benchmark results:
+The prompt generation command must execute in under 10 ms. The in-process benchmark measures the code; the latency test builds the real binary and times it, which also catches slow package init (CI runs it on Linux; on a busy machine it can fail from noise):
 
 ```sh
 go test -bench BenchmarkPrompt -benchmem ./internal/cli/
+PROMPTPET_LATENCY_TEST=1 go test -run Latency -v ./test/
 ```
 
 ### 5. Formatting & Code Quality

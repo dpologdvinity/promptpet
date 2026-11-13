@@ -2,7 +2,7 @@
 
 A tiny pet that lives in your shell prompt: `(=^･ω･^=) ♥♥♡` — and on your desktop as a retro handheld companion!
 
-`promptpet` is an ultra-fast, zero-dependency Go CLI tool and handheld desktop companion. It adds a responsive virtual companion to your shell that eats commits you make in git repositories, reacts to command success and failure, and sleeps when you are idle—all rendered in under 5 ms without slowing down your terminal. It also includes an optional retro handheld virtual companion mini-window (`promptpet gui`) with 8 cute pets, 8 keyboard mini-games, and gentle wellness check-ins.
+`promptpet` is a fast Go CLI tool and handheld desktop companion. It adds a responsive virtual companion to your shell that eats commits you make in git repositories, reacts to command success and failure, and sleeps when you are idle, in about 2 ms per prompt, so your terminal never slows down. It also includes an optional retro handheld virtual companion mini-window (`promptpet gui`) with 8 cute pets, 8 keyboard mini-games, and gentle wellness check-ins.
 
 ---
 
@@ -20,9 +20,12 @@ Using Go:
 
 ```sh
 go install github.com/dpologdvinity/promptpet@latest
+go install github.com/dpologdvinity/promptpet/cmd/promptpet-gui@latest  # only for the desktop window
 ```
 
-Or download precompiled release binaries for Linux (`amd64`, `arm64`) or macOS (`amd64`, `arm64`) from the GitHub Releases page and place `promptpet` on your `$PATH`.
+Or download precompiled release archives or `.deb`/`.rpm` packages for Linux (`amd64`, `arm64`) or macOS (`amd64`, `arm64`) from the GitHub Releases page and put `promptpet` and `promptpet-gui` together in a directory on your `$PATH`.
+
+The desktop window is a separate binary, `promptpet-gui`, so the `promptpet` binary that runs on every prompt never loads the graphics library. Homebrew and the packages install both; `promptpet gui` looks for `promptpet-gui` next to `promptpet`, then on your `$PATH`.
 
 ### 2. Shell Setup
 
@@ -87,7 +90,7 @@ This opens a pocket-sized (240×340) retro handheld LCD console, floating always
 
 The companion window brings your shell pet to life in a dedicated retro virtual device:
 
-- **Ultra-Lightweight & Smooth:** Handcrafted vector art rendered via Ebitengine. Runs at 20 TPS / ~1% CPU when idle; switches to 60 TPS during mini-gameplay for fluid responsiveness.
+- **Lightweight & Smooth:** Handcrafted vector art rendered via Ebitengine. Updates at 20 TPS when idle and 60 TPS during mini-games. Idle CPU depends mostly on your graphics driver: under WSLg, Mesa may fall back to software rendering, which used about three cores on our test laptop; `GALLIUM_DRIVER=d3d12 promptpet gui` uses the GPU instead and brought it to about half a core.
 - **Real-Time Shell Awareness:** Reacts to shell successes, command errors, and work velocity via asynchronous event IPC, with visual props: sparkles when you are in the flow, confetti on success, a cup of tea and a band-aid after an error, dozing "zzz" when idle, a morning coffee and a night-time nightcap.
 - **Casing Colours:** Lavender, Coral, Mint or Midnight; your choice is saved.
 - **Git Milestone Fanfare:** Creating a branch (`git checkout -b` / `git switch -c`), merging (`git merge`, a merge `git pull`, or concluding a conflicted merge), and every 5th commit of the day trigger a celebration. Each milestone fires once, on the first prompt after it happens; amends don't count as new commits.
@@ -108,7 +111,7 @@ The companion window brings your shell pet to life in a dedicated retro virtual 
 
 `promptpet` is architected so that the shell prompt and GUI window coexist seamlessly with zero interference:
 
-- **Guaranteed Fast Prompt Latency (<5 ms):** The shell prompt path only appends a small event record (`command_finish`, exit code, command duration, timestamp, and any git milestone) to `events.jsonl`. The shell hooks time each command without spawning processes (`$EPOCHREALTIME` in zsh and bash 5+, `$CMD_DURATION` in fish); older bash omits the duration. It never waits on GUI locks or blocks terminal execution. Benchmarks confirm prompt execution averages ~1.5 ms/op.
+- **Fast Prompt (about 2 ms):** The shell prompt path only appends a small event record (`command_finish`, exit code, command duration, timestamp, and any git milestone) to `events.jsonl`. The shell hooks time each command without spawning processes (`$EPOCHREALTIME` in zsh and bash 5+, `$CMD_DURATION` in fish); older bash omits the duration. It never waits on GUI locks or blocks terminal execution. The release binary takes a median 2.1 ms per prompt (hyperfine, 500 runs, WSL2 laptop), and CI fails if a build takes more than 10 ms.
 - **Asynchronous Event IPC:** The GUI process polls `events.jsonl` once per second (`1 Hz`), maintaining an incremental byte offset cursor. It seeks and streams new terminal events without file contention. The event log automatically rotates at 2 MB to prevent unbounded disk growth.
 - **Independent State Isolation:** Prompt vitals and feeding live in `state.json`, while companion pet preferences, wellness timestamps, and mini-game high scores reside in `companion.json`.
 - **Headless Detection:** If launched without an active X11, Wayland, or desktop display server, `promptpet gui` exits cleanly with a helpful error message instead of crashing.
@@ -166,7 +169,8 @@ The companion monitors healthy coding habits and delivers subtle in-character sp
 
 `promptpet` is designed with strict performance, stability, and isolation guarantees:
 
-- **Strict Prompt Budget (<10 ms):** The prompt path performs no network requests and no git subprocess execution.
+- **Strict Prompt Budget (<10 ms):** The prompt path performs no network requests and no git subprocess execution. CI times the built binary end to end, because an in-process benchmark cannot see process startup.
+- **Separate Window Binary:** The desktop window is `promptpet-gui`. Go runs every linked package's init code on each start, and the graphics library's took 12 ms, so linking it into `promptpet` once made every prompt 6.6 times slower (median 13.9 ms in v0.5.0, 2.1 ms now). A test fails if `promptpet` links it again.
 - **Detached Background Feeder:** Git commit inspection runs asynchronously in a detached daemon process (`promptpet _feed`), isolated from the interactive shell.
 - **Subprocess-Free Repo Detection:** The prompt uses `os.Stat` on `.git/logs/HEAD` to detect git changes without invoking `git`.
 - **Fault-Tolerant State:** Concurrency across shells is guarded with non-blocking file locks (`flock`), atomic file writes, and automatic recovery for corrupted state files.

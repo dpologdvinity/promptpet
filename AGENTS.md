@@ -5,10 +5,11 @@ repository. `CLAUDE.md` imports this file, so this is the single source of truth
 
 ## What this is
 
-`promptpet` is a single-binary Go CLI that puts a small pet in your shell
-prompt (zsh, bash, fish) and an optional Ebitengine desktop companion window
-(`promptpet gui`). User-facing docs: [README.md](README.md). Package boundaries
-and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
+`promptpet` is a Go CLI that puts a small pet in your shell prompt (zsh, bash,
+fish) and an optional Ebitengine desktop companion window (`promptpet gui`,
+which runs the separate `promptpet-gui` binary). User-facing docs:
+[README.md](README.md). Package boundaries and data flow:
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Setup and commands
 
@@ -16,13 +17,14 @@ Go version comes from `go.mod` (`go 1.26`). Shell-hook tests need `zsh` and
 `fish` installed; tests for a missing shell are skipped.
 
 ```sh
-go build -o bin/promptpet .                                # build (bin/ is gitignored)
+go build -o bin/ . ./cmd/promptpet-gui                     # build both binaries (bin/ is gitignored)
 go test ./...                                              # all tests
 go test -race ./...                                        # what CI runs (plus coverage)
 go vet ./...                                               # static analysis
 test -z "$(gofmt -s -l .)"                                 # format check (CI fails on diff)
 go test -run '^$' -bench BenchmarkPrompt ./internal/cli/   # prompt budget benchmark
 go test -run '^$' -bench . ./test/...                      # prompt + event-logging benchmark
+PROMPTPET_LATENCY_TEST=1 go test -run Latency -v ./test/   # time the built binary (CI runs this)
 ```
 
 Git hooks run through [lefthook](https://lefthook.dev) (`lefthook install`):
@@ -33,6 +35,10 @@ Git hooks run through [lefthook](https://lefthook.dev) (`lefthook install`):
 - **Prompt path stays under 10 ms.** `promptpet prompt` must not spawn `git`
   or touch the network. Repo detection uses `os.Stat` only (`internal/repo`).
   All git work happens in the detached `promptpet _feed` process (`internal/feed`).
+  Package init counts: `promptpet` must never import `internal/gui` or
+  Ebitengine (its init cost 12 ms per prompt). Window code goes in
+  `cmd/promptpet-gui`; shared non-GUI pieces go in `internal/window`.
+  `main_test.go` and `test/latency_test.go` enforce this.
 - **Hooks must preserve the user's exit status** (`$?` / `$status`) and must be
   idempotent when an rc file is sourced twice. `internal/hooks` tests check both.
 - **The prompt segment must be shell-safe.** Never emit `%`, `$`, `` ` ``, `\`,
